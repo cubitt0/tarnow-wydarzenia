@@ -64,7 +64,22 @@ KNOWN_TOWNS: dict[str, tuple[float, float]] = {
     "luzna": (49.7200, 21.0480),
     "zegocina": (49.8150, 20.3380),
     "zyrakow": (50.0880, 21.3730),
+    "grybow": (49.6240, 20.9480),
 }
+
+
+# Proper spelling for towns that sources write without Polish letters ("Tarnow").
+TOWN_NAMES = {norm: name for name in (
+    "Tarnów", "Dębica", "Brzesko", "Bochnia", "Dąbrowa Tarnowska", "Tuchów", "Ryglice", "Zakliczyn", "Ciężkowice",
+    "Wojnicz", "Żabno", "Radłów", "Pilzno", "Ropczyce", "Gorlice", "Biecz", "Szczucin", "Mielec", "Zalipie",
+    "Skrzyszów", "Lisia Góra", "Wierzchosławice", "Pleśna", "Gromnik", "Nowy Wiśnicz", "Lipnica Murowana", "Czchów",
+    "Bobowa", "Szczurowa", "Brzostek", "Nowy Sącz", "Jasło", "Lusławice", "Olesno", "Łużna", "Żegocina", "Żyraków",
+    "Grybów",
+) for norm in [unidecode(name).lower()]}
+
+
+def canonical_town(town: str | None) -> str | None:
+    return TOWN_NAMES.get(norm_town(town) or "", town)
 
 
 def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:

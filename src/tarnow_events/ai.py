@@ -79,6 +79,10 @@ Tekst:
 ---"""
 
 
+# Changes whenever the prompt or schema changes, so cached answers made under old rules are not reused.
+PROMPT_VERSION = hashlib.sha256((PROMPT + json.dumps(EVENT_SCHEMA, sort_keys=True)).encode()).hexdigest()[:10]
+
+
 class Gemini:
     def __init__(self, settings: Settings):
         self.key = settings.gemini_api_key

@@ -9,14 +9,15 @@ from .models import CATEGORIES, Event
 # Checked in order; an event can land in several (a children's concert is muzyka + dzieci).
 # Patterns match word *prefixes* on the diacritic-stripped, lowercased title + description.
 RULES: list[tuple[str, list[str]]] = [
-    ("kino", ["kino", "seans", "film", "projekcj", "dkf", "pokaz filmu", "premiera filmu"]),
-    ("sport", ["mecz", "turniej", "bieg ", "biegi", "maraton", "polmaraton", "zawody", "zuzel", "speedway",
+    ("kino", ["kino", "seans", "film", "projekcj", "dkf", "pokaz filmu", "premiera filmu", "cinemarzenie", "pokaz specjalny"]),
+    ("sport", ["mecz", "turniej", "bieg ", "biegi", "maraton", "polmaraton", "zawody", "zuzel", "speedway", "handball", "superliga", "pilka reczna", "futsal", "liga mezczyzn", "liga kobiet",
                "liga", "rajd", "parkrun", "siatkow", "pilka", "pilkars", "koszykow", "triathlon", "nordic"]),
     ("wystawy", ["wystaw", "wernisaz", "ekspozycj", "finisaz"]),
     ("teatr", ["spektakl", "teatr", "kabaret", "stand-up", "standup", "stand up", "monodram", "musical",
                "operetk", "balet", "przedstawieni"]),
     ("koncerty", ["koncert", "recital", "jazz", "rock", "orkiestr", "filharmon", "chor ", "chorow", "opera",
-                "symfoni", "kwartet", "trio ", "big band", "unplugged", "hip-hop", "hip hop", "metal", "blues"]),
+                "symfoni", "kwartet", "trio ", "big band", "unplugged", "hip-hop", "hip hop", "metal", "blues",
+                "tribute", "punk", "zespol", "orkiestra", "koled", "piosenk", "muzyczn", "gala operow"]),
     ("dzieci", ["dla dzieci", "dzieci", "rodzin", "bajk", "mikolaj", "ferie", "przedszkol", "malucha",
                 "maluchow", "familijn"]),
     ("festiwale", ["festiwal", "jarmark", "piknik", "dni miasta", "dni gminy", "kiermasz", "targi", "festyn",
@@ -29,6 +30,18 @@ RULES: list[tuple[str, list[str]]] = [
 ]
 
 _COMPILED = [(cat, re.compile("|".join(r"(?:^|\W)" + re.escape(k.strip()) for k in kws))) for cat, kws in RULES]
+
+
+# Not events, whatever the source says: council business, shop promotions, incidents, outages.
+JUNK = re.compile(
+    r"(?:^|\W)(sesj[aie] rady|komisj[aiey]|posiedzeni|wybory do|black ?week|black ?friday|rabat|promocj|wyprzedaz"
+    r"|-\d{2}%|wylaczeni[ae] pradu|przerwa w dostawie|zamkniecie drogi|utrudnieni|wypadek|potracon|uderzyl"
+    r"|przed sadem|dyzur|przetarg|nabor|rekrutacj|godziny otwarcia|na snieg)"
+)
+
+
+def is_junk(title: str) -> bool:
+    return bool(JUNK.search(" " + unidecode(title).lower()))
 
 
 def detect(text: str) -> list[str]:

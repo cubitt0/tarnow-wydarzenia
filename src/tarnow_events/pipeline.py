@@ -9,10 +9,10 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 from .ai import gemini
-from .categorize import categorize
+from .categorize import categorize, is_junk
 from .config import Settings, SourceConfig, load_sources
 from .dedup import deduplicate
-from .geo import Geocoder, distance_from_tarnow, norm_town
+from .geo import Geocoder, canonical_town, distance_from_tarnow, norm_town
 from .ical_out import build_calendar
 from .models import CATEGORIES, TZ, Event
 from .series import collapse_series, is_long
@@ -98,9 +98,13 @@ def run(settings: Settings, only: set[str] | None = None, use_ai: bool = True) -
     lo, hi = now - timedelta(days=settings.days_back), now + timedelta(days=settings.days_ahead)
     geo = Geocoder(settings.cache_dir)
     kept: list[Event] = []
-    dropped = {"window": 0, "no_location": 0, "too_far": 0}
+    dropped = {"window": 0, "junk": 0, "no_location": 0, "too_far": 0}
     for ev in events:
         cfg = cfg_by_id[ev.source.source_id]
+        if is_junk(ev.title):
+            dropped["junk"] += 1
+            continue
+        ev.town = canonical_town(ev.town)
         if (ev.end or ev.start) < lo or ev.start > hi:
             dropped["window"] += 1
             continue

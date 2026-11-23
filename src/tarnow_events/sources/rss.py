@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 import feedparser
 
 from .. import http
-from ..ai import gemini
+from ..ai import PROMPT_VERSION, gemini
 from ..htmltext import html_to_text
 from ..models import TZ
 from .base import Source, absolutize, clean_text
@@ -41,7 +41,7 @@ class RssSource(Source):
         feed = feedparser.parse(http.get(self.cfg.url).content)
         cutoff = datetime.now(TZ) - timedelta(days=int(opts.get("max_age_days", 30)))
 
-        index_path = ai.cache_dir / f"rss-index-{self.cfg.id}.json"
+        index_path = ai.cache_dir / f"rss-index-{self.cfg.id}-{PROMPT_VERSION}.json"
         index: dict[str, str] = json.loads(index_path.read_text()) if index_path.exists() else {}
 
         batch_keys: list[str] = []  # batches whose cached answers cover already-seen items
@@ -86,7 +86,7 @@ class RssSource(Source):
             if not batch:
                 continue
             text = "\n\n".join(b for _, b in batch)
-            key = hashlib.sha256(("rss" + self.cfg.id + text).encode()).hexdigest()
+            key = hashlib.sha256(("rss" + PROMPT_VERSION + self.cfg.id + text).encode()).hexdigest()
             result = ai.extract_events(
                 text=text, source=self.cfg.name, url=self.cfg.url,
                 default_location=self.default_location_text(), key=key,

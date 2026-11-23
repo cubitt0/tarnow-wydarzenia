@@ -90,3 +90,16 @@ def test_collapse_daily_exhibition_but_not_weekly_class():
     exh = [e for e in out if e.title == "Wystawa X"]
     assert len(exh) == 1 and exh[0].all_day and is_long(exh[0])
     assert len([e for e in out if e.title == "Joga"]) == 4
+
+
+def test_junk_filter_and_town_names():
+    from tarnow_events.categorize import is_junk
+    from tarnow_events.geo import canonical_town
+    for t in ["XXXI Sesja Rady Gminy Wierzchosławice", "DEICHMANN: black week -50% na wybrane produkty",
+              "Planowane wyłączenia prądu", "BMW uderzyło w tył Nissana", "XVII Komisja Kultury, Sportu"]:
+        assert is_junk(t), t
+    for t in ["Koncert kolęd", "Komisarz Alex – spektakl dla dzieci", "Dzień otwarty w ZSM"]:
+        assert not is_junk(t), t
+    assert canonical_town("Tarnow") == "Tarnów" and canonical_town("Kraków") == "Kraków"
+    assert detect("Tribute to Pink Floyd")[0] == "koncerty"
+    assert detect("Lotto SuperLiga: Handball Stal Mielec")[0] == "sport"
