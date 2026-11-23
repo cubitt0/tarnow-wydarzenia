@@ -188,6 +188,9 @@ def write_outputs(settings: Settings, events: list[Event], configs: list[SourceC
     (out / "feeds.json").write_text(json.dumps(feeds, ensure_ascii=False, indent=1))
     (out / "calendar.json").write_text(json.dumps(calendar_json(events, feeds), ensure_ascii=False, separators=(",", ":")))
     (out / "zrodla.html").write_text(render_index(settings, feeds, events, configs, stats), encoding="utf-8")
+    catalogue = settings.root / "docs" / "sources.html"
+    if catalogue.exists():  # research catalogue of every source considered, published as-is
+        (out / "katalog-zrodel.html").write_text(catalogue.read_text(encoding="utf-8"), encoding="utf-8")
     # The web calendar is a static page that reads calendar.json.
     (out / "index.html").write_text((Path(__file__).parent / "web" / "kalendarz.html").read_text(encoding="utf-8"),
                                     encoding="utf-8")

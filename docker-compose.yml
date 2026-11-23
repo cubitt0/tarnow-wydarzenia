@@ -11,6 +11,7 @@ services:
       - ./sources.yaml:/app/sources.yaml:ro
       - ./src:/app/src
       - ./tests:/app/tests
+      - ./docs:/app/docs:ro
     command: ["run", "--every", "86400"]
 
   web:
