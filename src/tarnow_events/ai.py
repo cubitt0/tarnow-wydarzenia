@@ -140,7 +140,8 @@ class Gemini:
                 try:
                     resp = httpx.post(
                         BASE.format(model=model),
-                        params={"key": self.key},
+                        # Header, not ?key=: URLs end up in exception messages and proxy logs.
+                        headers={"x-goog-api-key": self.key},
                         json={
                             "contents": [{"parts": [{"text": prompt}]}],
                             "generationConfig": {
