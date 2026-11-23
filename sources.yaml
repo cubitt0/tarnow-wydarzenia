@@ -1,0 +1,430 @@
+# Every event source. Full research catalogue (incl. Facebook-only venues and rejected sources):
+# docs/SOURCES.md. Types: ics | tribe | mec | jsonld | embedded_json | html_ai | rss | facebook
+# priority: organiser 80 · venue 70 · municipal 60 · aggregator/ticketing 40 · media 30
+# URL placeholders: {today} {today+60} {year} {month} {next_month} {next_year}
+
+sources:
+  # ─────────────────────────── TARNÓW · city aggregators (structured) ───────────────────────────
+  - id: it-tarnow
+    name: Tarnowskie Centrum Informacji (it.tarnow.pl)
+    type: tribe
+    url: https://www.it.tarnow.pl
+    group: miasto
+    town: Tarnów
+    priority: 60
+  - id: kultura-tarnow
+    name: Kultura Tarnów (kultura.tarnow.pl)
+    type: tribe
+    url: https://kultura.tarnow.pl
+    group: miasto
+    town: Tarnów
+    priority: 60
+  - id: tarnow-pl-sport
+    name: UM Tarnów – Kalendarz sportowy
+    type: html_ai
+    url: https://www.tarnow.pl/Turystyka-i-sport/Sportowy-Tarnow/Kalendarz-sportowy
+    group: miasto
+    category: sport
+    town: Tarnów
+    priority: 60
+  - id: tarnow-pl-aktualnosci
+    name: UM Tarnów – Aktualności
+    type: html_ai
+    url: https://www.tarnow.pl/Dla-mieszkancow/Aktualnosci
+    group: miasto
+    town: Tarnów
+    priority: 50
+
+  # ─────────────────────────── TARNÓW · culture institutions ───────────────────────────
+  - id: teatr-solskiego
+    name: Teatr im. L. Solskiego
+    type: embedded_json
+    url: https://teatr.tarnow.pl/repertuar/
+    group: kultura
+    category: teatr
+    town: Tarnów
+    location: {name: Teatr im. Ludwika Solskiego, address: "ul. Mickiewicza 4", town: Tarnów, lat: 50.0133, lon: 20.9877}
+    priority: 80
+    naive_local: true
+  - id: biblioteka-tarnow
+    name: Miejska Biblioteka Publiczna w Tarnowie
+    type: mec
+    url: https://www.biblioteka.tarnow.pl/feed/?post_type=mec-events
+    group: kultura
+    category: spotkania
+    town: Tarnów
+    priority: 80
+  - id: tck
+    name: Tarnowskie Centrum Kultury
+    type: rss
+    url: https://tck.pl/feed
+    group: kultura
+    town: Tarnów
+    location: {name: Tarnowskie Centrum Kultury, address: "ul. Mickiewicza 4", town: Tarnów}
+    priority: 80
+  - id: bwa-tarnow
+    name: BWA Tarnów
+    type: html_ai
+    url: https://bwa.tarnow.pl/kalendarium/wydarzenia?start={today}&end={today+60}
+    group: kultura
+    category: wystawy
+    town: Tarnów
+    location: {name: BWA Tarnów, address: "ul. Słowackiego 1", town: Tarnów}
+    priority: 80
+  - id: csm-moscice
+    name: Centrum Sztuki Mościce
+    type: html_ai
+    url: https://bilety.csm.tarnow.pl/Imprezy/default.aspx
+    group: kultura
+    town: Tarnów
+    location: {name: Centrum Sztuki Mościce, address: "ul. Traugutta 1", town: Tarnów}
+    priority: 80
+  - id: muzeum-ziemi-tarnowskiej
+    name: Muzeum Ziemi Tarnowskiej
+    type: rss
+    url: https://muzeum.tarnow.pl/rss.xml
+    group: kultura
+    category: wystawy
+    town: Tarnów
+    priority: 80
+  - id: muzeum-diecezjalne
+    name: Muzeum Diecezjalne w Tarnowie
+    type: rss
+    url: https://muzeum.diecezja.tarnow.pl/feed/
+    group: kultura
+    category: wystawy
+    town: Tarnów
+    location: {name: Muzeum Diecezjalne, address: "pl. Katedralny 6", town: Tarnów}
+    priority: 80
+  - id: centrum-paderewskiego
+    name: Centrum Paderewskiego Tarnów-Kąśna Dolna
+    type: html_ai
+    url: https://centrumpaderewskiego.pl/
+    group: kultura
+    category: koncerty
+    town: Kąśna Dolna
+    location: {name: Centrum Paderewskiego, town: Kąśna Dolna, lat: 49.8130, lon: 20.8570}
+    priority: 80
+  - id: palac-mlodziezy
+    name: Pałac Młodzieży w Tarnowie
+    type: rss
+    url: https://www.pm.tarnow.pl/?format=feed&type=rss
+    group: kultura
+    category: dzieci
+    town: Tarnów
+    priority: 70
+  - id: akademia-tarnowska
+    name: Akademia Tarnowska
+    type: rss
+    url: https://anstar.edu.pl/wydarzenia/feed/
+    group: edukacja
+    category: spotkania
+    town: Tarnów
+    priority: 70
+  # Zespół Szkół Muzycznych (sala koncertowa, ul. Lippóczy'ego 4): no own calendar; its concerts
+  # arrive via it-tarnow (venues 191264, 97828) and ticketing sites.
+  - id: zseg-tarnow
+    name: Zespół Szkół Ekonomiczno-Gastronomicznych (ZSEG)
+    type: rss
+    url: https://zseg.tarnow.pl/feed/
+    group: edukacja
+    town: Tarnów
+    location: {name: ZSEG, address: "ul. Bema 9-11", town: Tarnów}
+    priority: 70
+  - id: tosir
+    name: TOSiR Tarnów
+    type: rss
+    url: https://www.tosir.com.pl/feed/
+    group: sport
+    category: sport
+    town: Tarnów
+    priority: 70
+
+  # ─────────────────────────── TARNÓW · religion ───────────────────────────
+  - id: diecezja-wydarzenia
+    name: Diecezja Tarnowska – wydarzenia
+    type: html_ai
+    url: https://diecezjatarnow.pl/wydarzenia
+    group: religia
+    category: uroczystosci
+    town: Tarnów
+    priority: 60
+  - id: muzyka-koscielna
+    name: Wydział Muzyki Kościelnej Diecezji Tarnowskiej
+    type: html_ai
+    url: https://muzyka.diecezjatarnow.pl/wydarzenia
+    group: religia
+    category: koncerty
+    town: Tarnów
+    priority: 70
+  - id: rdn-wydarzenia
+    name: Radio RDN Małopolska – wydarzenia
+    type: mec
+    url: https://rdn.pl/events/feed/
+    group: media
+    priority: 40
+
+  # ─────────────────────────── TARNÓW · venues, bars, restaurants ───────────────────────────
+  - id: aurora
+    name: Restauracja Aurora
+    type: rss
+    url: https://auroratarnow.pl/wydarzenia/feed/
+    group: lokale
+    category: koncerty
+    town: Tarnów
+    location: {name: Restauracja Aurora, town: Tarnów}
+    priority: 70
+  - id: pilipalili
+    enabled: false  # feed stale since 2025-06; events moved to Facebook
+    name: Pilipalili
+    type: rss
+    url: https://pilipalili.pl/feed/
+    group: lokale
+    category: imprezy
+    town: Tarnów
+    location: {name: Pilipalili, town: Tarnów}
+    priority: 70
+  - id: trzech-kumpli
+    name: Browar Trzech Kumpli
+    type: rss
+    url: https://trzechkumpli.pl/wydarzenie/feed/
+    group: lokale
+    category: imprezy
+    priority: 70
+  - id: tarnow-tech
+    name: Tarnow Tech Community (Luma)
+    type: ics
+    url: https://api.lu.ma/ics/get?entity=calendar&id=cal-OxxNnZxejFvRrX7
+    group: lokale
+    category: spotkania
+    town: Tarnów
+    priority: 80
+  - id: gemini-park
+    name: Gemini Park Tarnów
+    type: rss
+    url: https://tarnow.geminipark.pl/feed/
+    group: lokale
+    town: Tarnów
+    location: {name: Gemini Park Tarnów, address: "ul. Krakowska 147", town: Tarnów}
+    priority: 50
+  - id: galeria-tarnovia
+    name: Galeria Tarnovia
+    type: rss
+    url: https://galeria-tarnovia.com/feed/
+    group: lokale
+    town: Tarnów
+    location: {name: Galeria Tarnovia, town: Tarnów}
+    priority: 50
+  - id: parafia-moscice
+    name: Parafia NMP Królowej Polski (Mościce)
+    type: rss
+    url: https://www.parafiamoscice.pl/feed/
+    group: religia
+    category: uroczystosci
+    town: Tarnów
+    priority: 60
+
+  # ─────────────────────────── TICKETING & AGGREGATORS ───────────────────────────
+  - id: biletyna-tarnow
+    name: Biletyna – Tarnów
+    type: jsonld
+    url: https://biletyna.pl/Tarnow
+    group: bilety
+    town: Tarnów
+    priority: 40
+  - id: allevents-tarnow
+    name: allevents.in – Tarnów
+    type: jsonld
+    url: https://allevents.in/tarnow
+    group: bilety
+    priority: 30
+
+  - id: ebilet
+    name: eBilet – Tarnów i okolice
+    type: ebilet
+    url: https://www.ebilet.pl/miasto/tarnow
+    group: bilety
+    priority: 40
+    cities: [tarnow, debica, brzesko, bochnia, mielec]
+  - id: bilety24
+    name: Bilety24 – Tarnów + 50 km
+    type: bilety24
+    url: https://www.bilety24.pl/szukaj?location=Tarn%C3%B3w&distance=50
+    group: bilety
+    priority: 40
+    search_location: Tarnów
+    distance: 50
+  - id: kupbilecik
+    name: KupBilecik – Tarnów i okolice
+    type: jsonld
+    url: https://www.kupbilecik.pl/pl/search?q=Tarn%C3%B3w
+    pages:
+      - https://www.kupbilecik.pl/pl/search?q=D%C4%99bica
+      - https://www.kupbilecik.pl/pl/search?q=Brzesko
+      - https://www.kupbilecik.pl/pl/search?q=Gorlice
+      - https://www.kupbilecik.pl/pl/search?q=Bochnia
+    group: bilety
+    priority: 40
+
+  # ─────────────────────────── CINEMAS (kino.ics only, not the main feeds) ───────────────────────────
+  # Multikino API started answering 401 to non-browser clients (2026-11-23); showtimes come via Bilety24.
+  - id: multikino-tarnow
+    enabled: false
+    name: Multikino Tarnów
+    type: multikino
+    url: https://www.multikino.pl/repertuar/tarnow
+    group: kino
+    category: kino
+    town: Tarnów
+    location: {name: Multikino Tarnów (Gemini Park), address: "ul. Krakowska 147", town: Tarnów}
+    priority: 70
+    cinema: "0050"
+    main_feed: false
+
+  # ─────────────────────────── MEDIA ───────────────────────────
+  - id: tarnowska-tv
+    name: Tarnowska.tv – wydarzenia
+    type: rss
+    url: https://www.tarnowska.tv/rss/events/pl
+    group: media
+    priority: 30
+  - id: radiokrakow-tarnow
+    name: Radio Kraków – Tarnów
+    type: rss
+    url: https://radiokrakow.pl/wiadomosci/tarnow/rss.xml
+    group: media
+    town: Tarnów
+    priority: 30
+    max_age_days: 14
+  - id: ikc-tarnow
+    name: tarnow.ikc.pl
+    type: rss
+    url: https://tarnow.ikc.pl/feed/
+    group: media
+    town: Tarnów
+    priority: 30
+    max_age_days: 14
+  - id: gosc-tarnowski
+    name: Gość Tarnowski
+    type: rss
+    url: https://tarnow.gosc.pl/rss/rtr/135dd3.W-diecezji-tarnowskiej
+    group: religia
+    category: uroczystosci
+    priority: 30
+    max_age_days: 14
+
+  # ─────────────────────────── REGION · structured (no AI) ───────────────────────────
+  - id: mok-brzesko
+    name: MOK Brzesko
+    type: tribe
+    url: https://mok-brzesko.pl
+    group: region
+    town: Brzesko
+    priority: 70
+  - id: dabrowa-tarnowska
+    name: Gmina Dąbrowa Tarnowska
+    type: tribe
+    url: https://dabrowatar.pl
+    group: region
+    town: Dąbrowa Tarnowska
+    priority: 60
+  - id: wierzchoslawice
+    name: Gmina Wierzchosławice
+    type: tribe
+    url: https://wierzchoslawice.pl
+    group: region
+    town: Wierzchosławice
+    priority: 60
+  - id: lisia-gora
+    name: Gmina Lisia Góra
+    type: tribe
+    url: https://lisiagora.pl
+    group: region
+    town: Lisia Góra
+    priority: 60
+  - id: plesna
+    name: Gmina Pleśna
+    type: tribe
+    url: https://www.plesna.pl
+    group: region
+    town: Pleśna
+    priority: 60
+  - id: mielec-wydarzenia
+    name: Miasto Mielec – wydarzenia
+    type: jsonld
+    url: https://www.mielec.pl/wydarzenia/
+    group: region
+    town: Mielec
+    priority: 60
+  - id: zabno
+    name: Urząd Miejski w Żabnie
+    type: mec
+    url: https://zabno.pl/feed/?post_type=mec-events
+    group: region
+    town: Żabno
+    priority: 60
+
+  # ─────────────────────────── REGION · RSS (AI) ───────────────────────────
+  - {id: tuchow, name: Gmina Tuchów – wydarzenia, type: rss, url: "https://www.tuchow.pl/wydarzenia/feed/", group: region, town: Tuchów, priority: 60, max_age_days: 365}
+  - {id: dk-tuchow, name: Dom Kultury w Tuchowie, type: rss, url: "https://dktuchow.pl/feed/", group: region, town: Tuchów, priority: 70}
+  - {id: ropczyce, enabled: false, name: Ropczyce – kalendarium, type: rss, url: "https://ropczyce.eu/kalendarium/feed/", group: region, town: Ropczyce, priority: 60}
+  - {id: lipnica, name: Gmina Lipnica Murowana, type: rss, url: "https://www.lipnicamurowana.pl/feed/?post_type=event", group: region, town: Lipnica Murowana, priority: 60, max_age_days: 365}
+  - {id: ryglice, name: Urząd Miejski w Ryglicach, type: rss, url: "https://ryglice.pl/feed/?post_type=event", group: region, town: Ryglice, priority: 60, max_age_days: 365}
+  - {id: olesno-zalipie, name: Gmina Olesno (Zalipie), type: rss, url: "https://gminaolesno.pl/category/wydarzenia/feed/", group: region, town: Olesno, priority: 60}
+  - {id: ck-pilzno, name: Centrum Kultury Pilzno, type: rss, url: "https://ckpilzno.pl/feed/?post_type=event", group: region, town: Pilzno, priority: 70, max_age_days: 365}
+  - {id: sport-brzesko, name: BOSiR Brzesko, type: rss, url: "https://sportbrzeski.pl/feed/?post_type=event", group: region, category: sport, town: Brzesko, priority: 70, max_age_days: 365}
+  - {id: gck-gorlice, name: Gorlickie Centrum Kultury, type: rss, url: "https://gck.gorlice.pl/feed/", group: region, town: Gorlice, priority: 70}
+  - {id: ck-ciezkowice, name: CK Gminy Ciężkowice, type: rss, url: "https://kultura.ciezkowice.pl/feed/", group: region, town: Ciężkowice, priority: 70}
+  - {id: moksir-czchow, name: MOKSiR Czchów, type: rss, url: "https://moksir.czchow.pl/feed/", group: region, town: Czchów, priority: 70}
+  - {id: gckib-skrzyszow, name: GCKiB Skrzyszów, type: rss, url: "https://gckib-skrzyszow.pl/feed/", group: region, town: Skrzyszów, priority: 70}
+  - {id: dom-malarek, name: Dom Malarek w Zalipiu, type: rss, url: "https://dommalarek.pl/feed/", group: region, town: Zalipie, priority: 70}
+  - {id: mosir-mielec, name: MOSiR Mielec, type: rss, url: "https://mosir.mielec.pl/feed/", group: region, category: sport, town: Mielec, priority: 60}
+  - {id: zakliczyn, name: Gmina Zakliczyn, type: rss, url: "https://www.zakliczyn.pl/feed/", group: region, town: Zakliczyn, priority: 60}
+  - {id: bck-biecz, name: Bieckie Centrum Kultury, type: rss, url: "https://bck.biecz.pl/asp/_private/rss.xml", group: region, town: Biecz, priority: 70}
+  - {id: muzeum-gorlice, name: Muzeum Dwory Karwacjanów i Gładyszów, type: rss, url: "https://www.muzeum.gorlice.pl/wydarzenia-kulturalne?format=feed&type=rss", group: region, town: Gorlice, priority: 70}
+  - {id: gok-luzna, name: GOK Łużna, type: rss, url: "https://gok.luzna.pl/blog/x5feed.php", group: region, town: Łużna, priority: 70}
+  - {id: gmina-tarnow, name: Gmina Tarnów, type: rss, url: "https://www.gmina.tarnow.pl/nowastrona/index.php?format=feed&type=rss", group: region, town: Tarnów, priority: 60}
+  - {id: powiat-tarnowski, name: Starostwo Powiatowe w Tarnowie, type: rss, url: "https://powiat.tarnow.pl/aktualnosci?format=feed&type=rss", group: region, priority: 50}
+  - {id: lgd-zpt, name: LGD Zielony Pierścień Tarnowa, type: rss, url: "https://www.lgdzpt.pl/feed/", group: region, priority: 50}
+  - {id: debica24, name: Debica24.pl, type: rss, url: "https://debica24.pl/rss", group: media, town: Dębica, priority: 30, max_age_days: 14}
+  - {id: halogorlice, name: halogorlice.info, type: rss, url: "https://www.halogorlice.info/rss/articles/pl", group: media, town: Gorlice, priority: 30, max_age_days: 14}
+  - {id: zakliczyninfo, name: Głos Zakliczyna, type: rss, url: "https://www.zakliczyninfo.pl/index.php?format=feed&type=rss", group: media, town: Zakliczyn, priority: 30}
+  - {id: bochnia-z-bliska, name: Bochnia i Brzesko z bliska – wydarzenia, type: rss, url: "https://bochniazbliska.pl/category/wydarzenia/feed/", group: media, priority: 30}
+  - {id: infodebica, name: Info Dębica, type: rss, url: "https://infodebica.pl/feed/", group: media, town: Dębica, priority: 30, max_age_days: 10}
+
+  # ─────────────────────────── REGION · HTML pages (AI) ───────────────────────────
+  - {id: brzesko-eventy, name: Gmina Brzesko – wydarzenia, type: html_ai, url: "https://www.brzesko.pl/eventy", group: region, town: Brzesko, priority: 60}
+  - {id: wojnicz, name: Gmina Wojnicz – wydarzenia, type: html_ai, url: "https://wojnicz.pl/wydarzenia", group: region, town: Wojnicz, priority: 60}
+  - {id: radlow, name: Gmina Radłów – wydarzenia, type: html_ai, url: "https://www.gminaradlow.pl/aktualnosci/wydarzenia", group: region, town: Radłów, priority: 60}
+  - {id: gromnik, name: Gmina Gromnik – kalendarz, type: html_ai, url: "https://www.gromnik.pl/asp/kalendarz,0,listawydarzen,,,26", group: region, town: Gromnik, priority: 60}
+  - {id: sckib-szczucin, name: SCKiB Szczucin, type: html_ai, url: "https://sckibszczucin.pl/wydarzenia", group: region, town: Szczucin, priority: 70}
+  - {id: mok-nowy-wisnicz, name: MOK Nowy Wiśnicz, type: html_ai, url: "https://moknowywisnicz.pl/mok/kalendarium-roczne", group: region, town: Nowy Wiśnicz, priority: 70}
+  - id: mok-debica
+    name: MOK Dębica
+    type: html_ai
+    url: https://mokdebica.pl/kalendarz/?month={month}&year={year}
+    pages: ["https://mokdebica.pl/kalendarz/?month={next_month}&year={next_year}"]
+    group: region
+    town: Dębica
+    priority: 70
+  # MOSiR Dębica: broken TLS certificate chain (2026-11-23), re-enable when fixed
+  - {id: mosir-debica, enabled: false, name: MOSiR Dębica, type: html_ai, url: "https://www.mosir.debica.pl/kalendarz/", group: region, category: sport, town: Dębica, priority: 60}
+  - {id: penderecki, name: ECM Krzysztofa Pendereckiego (Lusławice), type: html_ai, url: "https://penderecki-center.pl/aktualnosci", group: region, category: koncerty, town: Lusławice, priority: 80}
+  - {id: ciezkowice-gov, name: Gmina Ciężkowice, type: html_ai, url: "https://samorzad.gov.pl/web/gmina-ciezkowice/wydarzenia", group: region, town: Ciężkowice, priority: 60}
+  - {id: bobowa-gov, name: Gmina Bobowa, type: html_ai, url: "https://samorzad.gov.pl/web/gmina-bobowa/wydarzenia", group: region, town: Bobowa, priority: 60}
+  - {id: luzna-gov, name: Gmina Łużna, type: html_ai, url: "https://samorzad.gov.pl/web/gmina-luzna/wydarzenia", group: region, town: Łużna, priority: 60}
+  - {id: gorlice-wydarzenia, name: UM Gorlice – wydarzenia, type: html_ai, url: "https://www.gorlice.pl/pl/235/0/wydarzenia.html", group: region, town: Gorlice, priority: 60}
+  - {id: ck-zabno, name: Centrum Kultury Żabno, type: html_ai, url: "http://ck.zabno.pl/", group: region, town: Żabno, priority: 70}
+  - {id: ryglice-turystyka, name: Turystyka w Gminie Ryglice, type: html_ai, url: "https://turystyka.ryglice.pl/wydarzenia/", group: region, town: Ryglice, priority: 60}
+
+  # ─────────────────────────── FACEBOOK ───────────────────────────
+  # Page event lists need a login, so only single event permalinks work. Links found in any
+  # source above are followed automatically; add more by hand under `events:`.
+  - id: facebook
+    name: Facebook (wydarzenia)
+    type: facebook
+    url: https://www.facebook.com/events/
+    group: facebook
+    town: Tarnów
+    priority: 50
+    events: []

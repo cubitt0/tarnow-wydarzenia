@@ -1,0 +1,21 @@
+# Local dev: `docker compose up` → scraper runs now and then every 24h, feeds at http://localhost:8080
+services:
+  scraper:
+    build: .
+    env_file: .env
+    environment:
+      TE_PUBLIC_BASE_URL: ${TE_PUBLIC_BASE_URL:-http://localhost:8080}
+    volumes:
+      - ./public:/app/public
+      - ./cache:/app/cache
+      - ./sources.yaml:/app/sources.yaml:ro
+      - ./src:/app/src
+      - ./tests:/app/tests
+    command: ["run", "--every", "86400"]
+
+  web:
+    image: nginx:1.27-alpine
+    ports: ["8080:80"]
+    volumes:
+      - ./public:/usr/share/nginx/html:ro
+      - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
