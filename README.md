@@ -2,8 +2,8 @@
 
 **Wszystkie wydarzenia w Tarnowie i w promieniu 50 km w jednym kalendarzu**: koncerty, spektakle,
 kabarety i stand-upy, kino, wystawy, mecze, imprezy dla dzieci, festiwale, jarmarki, spotkania
-i warsztaty. Kalendarz zbiera wydarzenia z ponad 80 źródeł, usuwa duplikaty i co 6 godzin
-aktualizuje się sam. Możesz go oglądać w przeglądarce albo zasubskrybować w Google Calendar,
+i warsztaty. Kalendarz zbiera wydarzenia z ponad 80 źródeł, usuwa duplikaty i aktualizuje się
+sam codziennie o 12:00. Możesz go oglądać w przeglądarce albo zasubskrybować w Google Calendar,
 Apple Calendar lub Outlooku.
 
 [![Otwórz kalendarz wydarzeń Tarnowa](https://img.shields.io/badge/Otw%C3%B3rz_kalendarz-Tarn%C3%B3w_i_okolice-3a5ba9?style=for-the-badge&logo=googlecalendar&logoColor=white)](https://cubitt0.github.io/tarnow-wydarzenia/)
@@ -85,7 +85,7 @@ Na stronie [cubitt0.github.io/tarnow-wydarzenia](https://cubitt0.github.io/tarno
 Kliknij „Google – dodaj” przy *Koncerty i muzyka* w tabeli powyżej.
 
 **Jak często kalendarz się aktualizuje?**
-Co 6 godzin. Aplikacje kalendarza same pobierają zmiany: Apple Calendar i Outlook zwykle w ciągu kilku godzin,
+Raz dziennie, o 12:00. Aplikacje kalendarza same pobierają zmiany: Apple Calendar i Outlook zwykle w ciągu kilku godzin,
 Google Calendar raz na kilkanaście godzin.
 
 **Brakuje wydarzenia albo źródła. Co zrobić?**
@@ -130,7 +130,7 @@ sources.yaml ─► adaptery ─► normalizacja ─► geokodowanie + filtr 50 
 - **Repertuar kin** trafia tylko do `kino.ics`, żeby nie zasłaniał innych wydarzeń.
 - **Stabilne UID:** gdy wydarzenie dostaje nowe źródło, aplikacja kalendarza aktualizuje je zamiast dodawać drugi raz.
 
-**Infrastruktura (0 zł):** GitHub Actions uruchamia pobieranie co 6 godzin, GitHub Pages serwuje pliki `.ics`
+**Infrastruktura (0 zł):** GitHub Actions uruchamia pobieranie codziennie o 12:00, GitHub Pages serwuje pliki `.ics`
 i stronę z kalendarzem. Tekst ze stron bez danych strukturalnych czyta Gemini flash-lite w darmowym limicie;
 odpowiedzi są zapisywane w cache, więc AI widzi tylko nowe treści.
 

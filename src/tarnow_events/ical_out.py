@@ -9,7 +9,7 @@ from .models import CATEGORIES, Event
 
 log = logging.getLogger(__name__)
 
-REFRESH = "PT6H"
+REFRESH = "PT12H"  # feeds rebuild once a day at 12:00; ask clients to check twice a day
 
 
 def build_calendar(name: str, description: str, events: list[Event]) -> bytes:
@@ -22,7 +22,7 @@ def build_calendar(name: str, description: str, events: list[Event]) -> bytes:
     cal.add("x-wr-caldesc", description)
     cal.add("x-wr-timezone", "Europe/Warsaw")
     # Hints for subscribing clients; Google ignores them and polls on its own schedule (~12-24h).
-    cal.add("refresh-interval", timedelta(hours=6), parameters={"VALUE": "DURATION"})
+    cal.add("refresh-interval", timedelta(hours=12), parameters={"VALUE": "DURATION"})
     cal.add("x-published-ttl", REFRESH)
 
     stamp = datetime.now(timezone.utc)
