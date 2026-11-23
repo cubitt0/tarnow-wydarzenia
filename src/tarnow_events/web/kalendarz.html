@@ -83,11 +83,11 @@ a{color:var(--primary)}
   text-transform:none;display:inline-block;white-space:nowrap;direction:ltr;-webkit-font-feature-settings:"liga";font-feature-settings:"liga";
   font-variation-settings:"FILL" 0;user-select:none}
 
-.app{display:grid;grid-template-rows:auto auto 1fr;height:100%;
+.app{display:grid;grid-template-rows:auto auto 1fr;grid-template-columns:minmax(0,1fr);height:100%;overflow:hidden;
   padding-left:max(0px,env(safe-area-inset-left,0px));padding-right:max(0px,env(safe-area-inset-right,0px))}
 
 /* Top app bar */
-.bar{display:flex;align-items:center;gap:4px;padding:8px max(12px,env(safe-area-inset-left,0px)) 8px max(12px,env(safe-area-inset-right,0px));
+.bar{min-width:0;display:flex;align-items:center;gap:4px;padding:8px max(12px,env(safe-area-inset-left,0px)) 8px max(12px,env(safe-area-inset-right,0px));
   padding-top:max(8px,env(safe-area-inset-top,0px));min-height:64px;background:var(--surface);position:relative;z-index:3}
 .title{display:flex;flex-direction:column;min-width:0;margin:0 8px 0 4px}
 .title h1{font-size:22px;font-weight:500;line-height:28px;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -114,7 +114,7 @@ a{color:var(--primary)}
 .seg button[aria-pressed="true"] .ms{width:18px;opacity:1}
 
 /* Toolbar row */
-.tools{display:flex;align-items:center;gap:8px;padding:0 max(12px,env(safe-area-inset-left,0px)) 8px;flex-wrap:wrap}
+.tools{min-width:0;display:flex;align-items:center;gap:8px;padding:0 max(12px,env(safe-area-inset-left,0px)) 8px;flex-wrap:wrap}
 .period{font-size:16px;font-weight:500;margin:0 4px;min-width:0;white-space:nowrap}
 .chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:2px 0;flex:1 1 100%;order:3;mask-image:linear-gradient(90deg,#000 92%,transparent)}
 .chips::-webkit-scrollbar{display:none}
@@ -162,7 +162,7 @@ a{color:var(--primary)}
 .pill b{font-weight:600}
 .more{font-size:11.5px;color:var(--on-surface-var);padding:0 6px;font-weight:500;position:relative;z-index:1}
 .dots{display:none;gap:3px;justify-content:center;flex-wrap:wrap;padding:2px}
-.dots i{width:6px;height:6px;border-radius:3px;background:var(--ko);opacity:.85}
+.dots i{width:6px;height:6px;border-radius:3px;background:color-mix(in srgb,var(--ko) 45%,var(--k))}
 
 /* Agenda (month on phones, and day list) */
 .agenda{overflow:auto;padding:8px 12px 16px;border-top:1px solid var(--outline-var);display:none}
@@ -226,12 +226,13 @@ dialog[open]{position:fixed;inset:0;margin:auto}
 
 /* Phone */
 @media (max-width:720px){
-  .title small,.hide-sm{display:none}
+  .title,.hide-sm{display:none}
+  .seg .ms{display:none}
   .bar{min-height:56px}
   .title h1{font-size:18px}
   .search{flex:1 1 100%;order:4}
   .seg button{min-width:0;padding:0 10px}
-  .pill,.more{display:none}
+  .cell .pill,.cell .more{display:none}
   .dots{display:flex}
   .cell{align-items:center;padding:2px;border-radius:10px}
   .month{grid-auto-rows:minmax(44px,1fr);flex:0 0 auto}
@@ -292,16 +293,6 @@ const store = {
   set(k, v) { try { localStorage.setItem("tw:" + k, JSON.stringify(v)); } catch {} },
 };
 
-const state = {
-  view: store.get("view", innerWidth < 720 ? "month" : "month"),
-  cursor: todayKey(),
-  selected: todayKey(),
-  // Cinema showings and multi-week exhibitions are off by default: they would bury everything else.
-  off: new Set(store.get("off", ["kino", "dlugie"])),
-  q: "",
-  theme: store.get("theme", "system"),
-  data: null,
-};
 
 // ---------- dates (all in Europe/Warsaw, keyed as YYYY-MM-DD) ----------
 const fmtParts = new Intl.DateTimeFormat("sv-SE", {timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false});
@@ -315,6 +306,17 @@ function dow(k) { return (kd(k).getUTCDay() + 6) % 7; }  // Monday = 0
 function weekStart(k) { return addDays(k, -dow(k)); }
 function hm(min) { return String(Math.floor(min / 60)).padStart(2, "0") + ":" + String(min % 60).padStart(2, "0"); }
 function longDate(k) { const d = kd(k); return `${DOW[dow(k)]}, ${d.getUTCDate()} ${MONTHS_GEN[d.getUTCMonth()]}`; }
+
+const state = {
+  view: store.get("view", "month"),
+  cursor: todayKey(),
+  selected: todayKey(),
+  // Cinema showings and multi-week exhibitions are off by default: they would bury everything else.
+  off: new Set(store.get("off", ["kino", "dlugie"])),
+  q: "",
+  theme: store.get("theme", "system"),
+  data: null,
+};
 
 // ---------- data ----------
 function prepare(raw) {
@@ -472,7 +474,17 @@ function periodLabel() {
     ? `${sd.getUTCDate()}–${ed.getUTCDate()} ${MONTHS_GEN[ed.getUTCMonth()]} ${ed.getUTCFullYear()}`
     : `${sd.getUTCDate()} ${MONTHS_GEN[sd.getUTCMonth()]} – ${ed.getUTCDate()} ${MONTHS_GEN[ed.getUTCMonth()]}`;
 }
-function setView(v) { if (v === state.view) return; state.view = v; store.set("view", v); render("zoom"); }
+const HASH = {month: "miesiac", week: "tydzien", day: "dzien"};
+function setView(v) {
+  if (v === state.view) return;
+  state.view = v; store.set("view", v);
+  history.replaceState(null, "", "#" + HASH[v]);
+  render("zoom");
+}
+// A link with #tydzien / #dzien / #miesiac opens that view.
+const fromHash = Object.keys(HASH).find(k => "#" + HASH[k] === location.hash);
+if (fromHash) state.view = fromHash;
+addEventListener("hashchange", () => { const v = Object.keys(HASH).find(k => "#" + HASH[k] === location.hash); if (v) setView(v); });
 function step(n) {
   state.cursor = state.view === "month" ? addMonths(state.cursor, n) : addDays(state.cursor, n * (state.view === "week" ? 7 : 1));
   if (state.view === "month") state.selected = state.cursor.slice(0, 7) === todayKey().slice(0, 7) ? todayKey() : state.cursor;
