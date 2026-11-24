@@ -290,6 +290,10 @@ def test_ads_off_by_default_and_on_with_both_ids(tmp_path):
     off = apply_ads(page, tmp_path, None, None)
     assert off == "<head></head><main><footer></footer></main>" and not (tmp_path / "ads.txt").exists()
     assert "adsbygoogle" not in apply_ads(page, tmp_path, "ca-pub-123", "x\"><script>")  # malformed: stays off
+    verify_only = apply_ads(page, tmp_path, "ca-pub-1234567890123456", None)  # before approval: no slot yet
+    assert '<meta name="google-adsense-account" content="ca-pub-1234567890123456">' in verify_only
+    assert "adsbygoogle" not in verify_only and (tmp_path / "ads.txt").exists()
+    assert "<script" not in apply_ads(page, tmp_path, "ca-pub-1234567890123456", "x\"><script>")
     on = apply_ads(page, tmp_path, "ca-pub-1234567890123456", "9876543210")
     assert 'data-ad-client="ca-pub-1234567890123456"' in on and 'data-ad-slot="9876543210"' in on
     assert on.index("adsbygoogle.js") < on.index("</head>") < on.index("<ins") < on.index("<footer>")

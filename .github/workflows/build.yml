@@ -79,7 +79,8 @@ jobs:
           # Max Gemini requests per day (Settings → Secrets and variables → Actions → Variables).
           TE_AI_DAILY_LIMIT: ${{ vars.TE_AI_DAILY_LIMIT || '60' }}
           TE_PUBLIC_BASE_URL: ${{ steps.pages.outputs.base_url }}
-          # AdSense banner (Settings → Secrets and variables → Actions → Variables); off while unset.
+          # AdSense (Settings → Secrets and variables → Actions → Variables). CLIENT alone: verification
+          # meta tag + ads.txt; with SLOT also the banner. Both unset: no ad code at all.
           TE_ADSENSE_CLIENT: ${{ vars.TE_ADSENSE_CLIENT }}
           TE_ADSENSE_SLOT: ${{ vars.TE_ADSENSE_SLOT }}
         run: tarnow-events run
