@@ -150,6 +150,7 @@ def run(settings: Settings, only: set[str] | None = None, use_ai: bool = True) -
     for e in merged:
         if not e.in_main and not e.tickets:
             e.tickets = free_ticket(e)
+    apply_tickets_fallback(merged, configs)
 
     write_outputs(settings, merged, configs, stats)
     ai = gemini(settings)
@@ -199,6 +200,14 @@ def json_end(e: Event) -> str | None:
         after = e.end.astimezone(TZ).date() + timedelta(days=1)
         return datetime(after.year, after.month, after.day, tzinfo=TZ).isoformat()
     return e.end.isoformat()
+
+
+def apply_tickets_fallback(events: list[Event], configs: list[SourceConfig]) -> None:
+    """No ticket link found: a source's general box office (`tickets_fallback`), e.g. a theatre's Bilety24 page."""
+    fallback = {c.id: c.options["tickets_fallback"] for c in configs if c.options.get("tickets_fallback")}
+    for e in events:
+        if not e.tickets and not e.cancelled:
+            e.tickets = next((fallback[r.source_id] for r in e.all_sources() if r.source_id in fallback), None)
 
 
 def is_tarnow(e: Event) -> bool:

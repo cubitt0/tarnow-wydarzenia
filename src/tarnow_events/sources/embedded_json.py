@@ -16,7 +16,8 @@ class EmbeddedJsonSource(Source):
     Options:
       pages: extra URLs
       title_key (default "title"), start_key ("start"), end_key ("end"), url_key ("permalink"),
-      description_key ("excerpt"), location_key (none)
+      description_key ("excerpt"), location_key (none); url_key may be a dotted path
+      ("buttons.related_post.href"); without it the event links to the listing page
       naive_local: true → ignore the timezone in start/end (plugins that stamp local time "+00:00")
       anchor: regex marking where candidate objects start (default '\\{"title":')
     """
@@ -57,12 +58,18 @@ class EmbeddedJsonSource(Source):
                     title=obj.get(keys["title"]),
                     start=start,
                     end=end,
-                    url=obj.get(keys["url"]) or page,
+                    url=_dig(obj, keys["url"]) or page,
                     description=obj.get(keys["description"]),
                     location_name=obj.get(keys["location"]) if keys["location"] else None,
                 )
                 if ev:
                     yield ev
+
+
+def _dig(obj, path: str):
+    for part in path.split("."):
+        obj = obj.get(part) if isinstance(obj, dict) else None
+    return obj if isinstance(obj, str) and obj.startswith("http") else None
 
 
 def _strip_tz(v):

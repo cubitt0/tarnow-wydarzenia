@@ -720,11 +720,17 @@ function prepare(list) {
       e.emin = en.key === e.sk ? en.min : null;
     } else { e.ek = e.sk; e.emin = null; e.eMs = e.sMs + 2 * 3600e3; e.multi = false; }
     e.span = e.ad || e.multi;
+    // Filmweb cinema pages take a day offset from today (?day=N), written at build time: recount it.
+    e.src = e.src.map(([n, u]) => [n, /filmweb\.pl\/showtimes\//.test(u) ? filmwebDay(u, e.sk) : u]);
     try { e.host = new URL(e.src[0][1]).hostname; } catch { e.host = ""; }
     e.hay = [e.t, e.loc, e.d, ...e.src.map(s => s[0])].join(" ").toLowerCase();
   }
   list.sort((a, b) => a.sk < b.sk ? -1 : a.sk > b.sk ? 1 : a.smin - b.smin || a.t.localeCompare(b.t, "pl"));
   return list;
+}
+function filmwebDay(u, k) {
+  const n = Math.max(0, diffDays(todayKey(), k)), m = u.match(/^([^?#]*)(?:\?[^#]*)?(#.*)?$/);
+  return m ? m[1] + (n ? "?day=" + n : "") + (m[2] || "") : u;
 }
 const EVENTS = prepare(CAL.events || []);
 const BY_ID = new Map(EVENTS.map(e => [e.id, e]));

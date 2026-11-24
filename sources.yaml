@@ -46,6 +46,10 @@ sources:
     location: {name: Teatr im. Ludwika Solskiego, address: "ul. Mickiewicza 4", town: Tarnów, lat: 50.0133, lon: 20.9877}
     priority: 80
     naive_local: true
+    # The plugin's permalink (/class/…?wcs_timestamp=) answers 404; the play's own page works.
+    url_key: buttons.related_post.href
+    # No ticket link for a performance: the theatre's page on Bilety24.
+    tickets_fallback: https://www.bilety24.pl/organizator/teatr-im-ludwika-solskiego-w-tarnowie-1151.html
   - id: biblioteka-tarnow
     name: Miejska Biblioteka Publiczna w Tarnowie
     type: mec
@@ -478,7 +482,6 @@ sources:
     days: 7
     cinemas:
       - {path: "/showtimes/Tarn%C3%B3w/Multikino-2994", name: Multikino Tarnów, town: Tarnów, lat: 50.001192, lon: 20.957393}
-      - {path: "/showtimes/Tarn%C3%B3w/Millenium-438", name: Kino Millenium (CSM), town: Tarnów, lat: 50.009833, lon: 20.92706}
       - {path: "/showtimes/Rad%C5%82%C3%B3w/Kino+MCK-2408", name: Kino MCK Radłów, town: Radłów, lat: 50.08404, lon: 20.84833}
       - {path: "/showtimes/Tuch%C3%B3w/Kino+Promie%C5%84-2419", name: Kino Promień Tuchów, town: Tuchów, lat: 49.89379, lon: 21.05271}
       - {path: "/showtimes/D%C4%85browa+Tarnowska/Kino+Sok%C3%B3%C5%82-1488", name: Kino Sokół Dąbrowa Tarnowska, town: Dąbrowa Tarnowska, lat: 50.17049, lon: 20.97591}
@@ -487,6 +490,17 @@ sources:
       - {path: "/showtimes/Biecz/Farys-2315", name: Kino Farys Biecz, town: Biecz, lat: 49.73318, lon: 21.25705}
       - {path: "/showtimes/Bochnia/Regis-1294", name: Kino Regis Bochnia, town: Bochnia, lat: 49.97029, lon: 20.42862}
       - {path: "/showtimes/Solec-Zdr%C3%B3j/Kino+GCK-2411", name: Kino GCK Solec-Zdrój, town: Solec-Zdrój, lat: 50.36324, lon: 20.88762}
+  # Millenium's own listing has a booking link per screening (Filmweb has none for it).
+  - id: kino-millenium
+    name: Kino Millenium (CSM)
+    type: kinotarnow
+    url: https://kino.tarnow.pl/wydarzenia/repertuar
+    group: kino
+    category: kino
+    town: Tarnów
+    location: {name: Kino Millenium (CSM), address: "ul. Traugutta 1", town: Tarnów, lat: 50.009833, lon: 20.92706}
+    priority: 70
+    main_feed: false
   - id: helios-nowy-sacz
     name: Helios Nowy Sącz
     type: helios

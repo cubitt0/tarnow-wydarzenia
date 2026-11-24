@@ -27,6 +27,7 @@ log = logging.getLogger(__name__)
 
 TITLE_THRESHOLD = 85
 TIME_TOLERANCE_MIN = 60
+SCREENING_TOLERANCE_MIN = 5
 PLACE_TOLERANCE_KM = 2.0
 
 # Words that carry no identity: "Koncert: X" and "X" are the same event.
@@ -67,7 +68,14 @@ def same_event(a: Event, b: Event) -> bool:
     # Same URL alone proves nothing: AI-extracted events all point at their listing page.
     if not titles_match(a.title, b.title):
         return False
-    if not a.all_day and not b.all_day:
+    if not a.in_main and not b.in_main:
+        # Cinema screenings: one per showtime, so a film's 10:00 and 10:45 shows stay apart. Only the
+        # same screening reported by two sources (Filmweb and Bilety24) merges.
+        if {r.source_id for r in a.all_sources()} & {r.source_id for r in b.all_sources()}:
+            return False
+        if abs((a.start - b.start).total_seconds()) > SCREENING_TOLERANCE_MIN * 60:
+            return False
+    elif not a.all_day and not b.all_day:
         if abs((a.start - b.start).total_seconds()) > TIME_TOLERANCE_MIN * 60:
             return False
     return same_place(a, b)
@@ -228,6 +236,8 @@ def merge(cluster: list[Event]) -> Event:
 
 def member_key(e: Event) -> str:
     raw = f"{e.source.source_id}|{norm_url(e.source.url)}|{e.day.isoformat()}|{norm_title(e.title)}"
+    if not e.in_main:
+        raw += f"|{e.start.astimezone(TZ):%H:%M}"  # a film's screenings on one day share title, page and day
     return hashlib.sha1(raw.encode()).hexdigest()
 
 

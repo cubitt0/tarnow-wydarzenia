@@ -1,7 +1,7 @@
-"""Cinema showtimes: Filmweb (10 cinemas around Tarnów, incl. Multikino), Helios and Kino Marzenie.
-
-Both produce one event per film per day ("Film X (Multikino)", times in the description)
-rather than one per screening, and only go to the cinema calendar (main_feed: false).
+"""Cinema showtimes: Filmweb (cinemas around Tarnów, incl. Multikino), Helios, Kino Marzenie and
+Kino Millenium. One event per screening ("Film X (Multikino Tarnów)" at 10:00, another at 12:45…),
+each with its booking link where the cinema publishes one. They only go to the cinema calendar
+(main_feed: false).
 """
 
 from __future__ import annotations
@@ -10,7 +10,6 @@ import html as htmllib
 import logging
 import re
 import time
-from collections import defaultdict
 from datetime import date, timedelta
 
 from selectolax.lexbor import LexborHTMLParser as HTMLParser
@@ -19,11 +18,38 @@ from .. import http
 from .base import Source
 
 log = logging.getLogger(__name__)
+HM = re.compile(r"(\d{1,2}:\d{2})\s*$")
+# Filmweb posters (fwcdn.pl/fpo/…/<id>.<size>.<ext>): the listing hands out 140×200 (.7.webp);
+# size 8 (webp) / 3 (jpg) is the same poster at 500×625.
+FW_POSTER = re.compile(r"^(https://fwcdn\.pl/fpo/.+\.)\d+\.(webp|jpg)$")
+
+
+def big_poster(url: str | None) -> str | None:
+    m = FW_POSTER.match(url or "")
+    return f"{m.group(1)}{'8' if m.group(2) == 'webp' else '3'}.{m.group(2)}" if m else url
+
+
+def _screening(src: Source, *, film: str, cinema: str, day: str, hm: str, url: str, kinds: list[str],
+               image: str | None = None, extra: str | None = None, tickets: str | None = None, **loc):
+    kinds = [k for k in dict.fromkeys(k.strip() for k in kinds) if k]
+    desc = "Seans" + (": " + " / ".join(kinds) if kinds else "")
+    if extra:
+        desc += "\n" + extra
+    ev = src.make_event(title=f"{film} ({cinema})", start=f"{day}T{hm.zfill(5)}", url=url, description=desc,
+                        image=image, categories=["kino"], **loc)
+    if ev:
+        ev.in_main = False
+        ev.tickets = tickets
+    return ev
 
 
 class FilmwebSource(Source):
     """Filmweb cinema pages (/showtimes/<city>/<cinema>-<id>?day=N) carry every showtime as
-    `seanceTile` elements with data-date / data-value (HH:MM) / data-lang / data-type.
+    `seanceTile` elements with data-date / data-value (HH:MM) / data-lang / data-type, and for some
+    cinemas (Multikino) a link to the screening's booking page.
+
+    Each screening links to the cinema's Filmweb page for that day, scrolled to the film. Filmweb only
+    takes a day offset from today (?day=N); the web calendar recomputes it from the event's date.
 
     Options:
       cinemas: list of {path, name, town, lat, lon}
@@ -34,8 +60,10 @@ class FilmwebSource(Source):
 
     def fetch(self):
         days = int(self.cfg.options.get("days", 7))
+        today = date.today()
         for cinema in self.cfg.options.get("cinemas", []):
-            showings: dict[tuple[str, str], dict] = {}
+            loc = {"location_name": cinema["name"], "town": cinema.get("town"), "lat": cinema.get("lat"), "lon": cinema.get("lon")}
+            shows: dict[tuple[str, str, str], dict] = {}
             for day in range(days):
                 url = f"https://www.filmweb.pl{cinema['path']}" + (f"?day={day}" if day else "")
                 try:
@@ -46,43 +74,35 @@ class FilmwebSource(Source):
                 time.sleep(0.3)
                 for item in page.css(".ShowtimesFilmsItem"):
                     title_a = item.css_first(".preview__title a")
-                    tiles = item.css(".seanceTiles .seanceTile[data-date][data-value]")
-                    if not title_a or not tiles:
+                    if not title_a:
                         continue
                     title = htmllib.unescape(title_a.text(strip=True))
-                    film_url = title_a.attributes.get("href") or ""
-                    poster = (item.css_first(".poster[data-image]") or title_a).attributes.get("data-image")
-                    for t in tiles:
+                    poster = item.css_first(".poster[data-image]")
+                    film_id = (item.css_first("[data-film-id]") or title_a).attributes.get("data-film-id")
+                    for t in item.css(".seanceTiles .seanceTile[data-date][data-value]"):
                         d, hm = t.attributes["data-date"], t.attributes["data-value"]
-                        rec = showings.setdefault((title, d), {"url": film_url, "img": poster, "times": set(), "buy": {}})
-                        kind = " ".join(x for x in (t.attributes.get("data-type"), t.attributes.get("data-lang")) if x)
-                        rec["times"].add((hm, kind))
-                        # Some cinemas (Multikino) let Filmweb link each screening to its booking page.
+                        offset = (date.fromisoformat(d) - today).days
+                        page_url = f"https://www.filmweb.pl{cinema['path']}" + (f"?day={offset}" if offset > 0 else "") \
+                            + (f"#{film_id}" if film_id else "")
+                        # Two halls at the same minute (2D and 3D) are one entry with both versions.
+                        rec = shows.setdefault((title, d, hm), {"url": page_url, "img": big_poster(poster.attributes.get("data-image")) if poster else None,
+                                                                "kinds": [], "buy": None})
+                        rec["kinds"].append(" ".join(x for x in (t.attributes.get("data-type"), t.attributes.get("data-lang")) if x))
                         link = t.css_first("a.seanceTile__link[href]")
-                        if link and link.attributes["href"].startswith("http"):
-                            rec["buy"].setdefault(hm, link.attributes["href"])
-            loc = {"location_name": cinema["name"], "town": cinema.get("town"), "lat": cinema.get("lat"), "lon": cinema.get("lon")}
-            for (title, d), rec in sorted(showings.items()):
-                times = sorted(rec["times"])
-                ev = self.make_event(
-                    title=f"{title} ({cinema['name']})",
-                    start=f"{d}T{times[0][0]}",
-                    url=("https://www.filmweb.pl" + rec["url"]) if rec["url"].startswith("/") else rec["url"],
-                    description="Seanse: " + " · ".join(f"{hm} {k}".strip() for hm, k in times),
-                    image=rec["img"],
-                    categories=["kino"],
-                    **loc,
-                )
+                        if link and link.attributes["href"].startswith("http") and not rec["buy"]:
+                            rec["buy"] = link.attributes["href"]
+            for (title, d, hm), rec in sorted(shows.items()):
+                ev = _screening(self, film=title, cinema=cinema["name"], day=d, hm=hm, url=rec["url"], kinds=rec["kinds"],
+                                image=rec["img"], tickets=rec["buy"], **loc)
                 if ev:
-                    ev.in_main = False
-                    ev.tickets = next((rec["buy"][hm] for hm, _ in times if hm in rec["buy"]), None)
                     yield ev
 
 
 class KinoMarzenieSource(Source):
     """Kino Marzenie, Tarnów: the site's per-day listing (/embed/events?start_date=D&end_date=D) has every
-    film with its page, poster, and each screening's time, version and booking link (marzenieonline.tck.pl).
-    It shows one day per request whatever the range, so the days are read one by one.
+    film with its poster, and each screening's time, version and booking link (marzenieonline.tck.pl).
+    It shows one day per request whatever the range, so the days are read one by one. A screening
+    links to the cinema's repertoire for its day.
 
     Options: days (default 14), category_id (default 8: films).
     """
@@ -105,42 +125,80 @@ class KinoMarzenieSource(Source):
             yield from self.parse_day(page, d)
 
     def parse_day(self, page: HTMLParser, d: str):
+        day_url = f"{self.BASE}/repertuar?start_date={d}&end_date={d}"
         for item in page.css(".row.item"):
             title_a = item.css_first("h4 a[href]")
             if not title_a:
                 continue
             title = " ".join(title_a.text(deep=False, strip=True).split()) or title_a.text(strip=True)
-            shows = []
-            for a in item.css("a[href*='MSI']"):
-                m = re.search(r"(\d{1,2}:\d{2})\s*$", a.text(separator=" ", strip=True))
-                if not m:
-                    continue
-                version = a.parent.css_first(".flex-wrap") if a.parent else None
-                shows.append((m.group(1).zfill(5), version.text(strip=True) if version else "", a.attributes["href"]))
-            if not shows:
-                continue  # past days keep the films but drop their screenings
-            shows.sort()
             img = item.css_first("img[src]")
             genre = item.css_first("span.small")
-            desc = "Seanse: " + " · ".join(f"{hm} {v}".strip() for hm, v, _ in shows)
-            if genre:
-                desc += "\n" + genre.text(strip=True)
-            ev = self.make_event(
-                title=f"{title} ({self.cfg.name})",
-                start=f"{d}T{shows[0][0]}",
-                url=self.BASE + title_a.attributes["href"] if title_a.attributes["href"].startswith("/") else title_a.attributes["href"],
-                description=desc,
-                image=img.attributes["src"] if img else None,
-                categories=["kino"],
-            )
-            if ev:
-                ev.in_main = False
-                ev.tickets = shows[0][2]
-                yield ev
+            for a in item.css("a[href*='MSI']"):
+                m = HM.search(a.text(separator=" ", strip=True))
+                if not m:
+                    continue  # past days keep the films but drop their screenings
+                version = a.parent.css_first(".flex-wrap") if a.parent else None
+                ev = _screening(self, film=title, cinema=self.cfg.name, day=d, hm=m.group(1), url=day_url,
+                                kinds=[version.text(strip=True) if version else ""], image=img.attributes["src"] if img else None,
+                                extra=genre.text(strip=True) if genre else None, tickets=a.attributes["href"])
+                if ev:
+                    yield ev
+
+
+class KinoTarnowSource(Source):
+    """Kino Millenium (Centrum Sztuki Mościce), kino.tarnow.pl: the per-day listing
+    (/wydarzenia/embed/list?categoryId=5&startDate=D&endDate=D) has each film with its screenings:
+    time, hall, version and a booking link (bilety.csm.tarnow.pl). A screening links to the
+    cinema's repertoire for its day.
+
+    Options: days (default 14), category_id (default 5: films).
+    """
+
+    type = "kinotarnow"
+    BASE = "https://kino.tarnow.pl"
+
+    def fetch(self):
+        days = int(self.cfg.options.get("days", 14))
+        cat = self.cfg.options.get("category_id", 5)
+        for n in range(days):
+            d = (date.today() + timedelta(days=n)).isoformat()
+            try:
+                page = HTMLParser(http.get(f"{self.BASE}/wydarzenia/embed/list",
+                                           params={"categoryId": cat, "startDate": d, "endDate": d}).text)
+            except Exception as e:
+                log.info("kino.tarnow.pl %s: %s", d, e)
+                break
+            time.sleep(0.3)
+            yield from self.parse_day(page, d)
+
+    def parse_day(self, page: HTMLParser, d: str):
+        day_url = f"{self.BASE}/wydarzenia/repertuar?startDate={d}&endDate={d}"
+        for item in page.css(".item-box-1"):
+            h3 = item.css_first("h3")
+            if not h3:
+                continue
+            title = h3.text(strip=True)
+            img = item.css_first("img[src]")
+            genre = item.css_first(".meta-tags li span:last-child")
+            for a in item.css("a.btn-ticket[href]"):
+                when = a.css_first(".display-4")
+                m = HM.search(when.text(separator=" ", strip=True)) if when else None
+                if not m:
+                    continue
+                hall = a.css_first(".text-white")
+                version = a.css_first(".text-secondary-300")
+                kinds = [" ".join(version.text(strip=True).split()) if version else "", hall.text(strip=True).lower() if hall else ""]
+                buy = a.attributes["href"].replace("returnlink=http://localhost/", f"returnlink={self.BASE}/")
+                ev = _screening(self, film=title, cinema=self.cfg.name, day=d, hm=m.group(1), url=day_url, kinds=kinds,
+                                image=img.attributes["src"] if img else None, extra=genre.text(strip=True) if genre else None,
+                                tickets=buy)
+                if ev:
+                    yield ev
 
 
 class HeliosSource(Source):
     """Helios cinemas (restapi.helios.pl): screenings for a date range, titles from /api/movie/{id}.
+    Helios publishes no booking links; screenings link to the cinema's page.
 
     Options: cinema_id, days (default 7), and the usual location for the cinema.
     """
@@ -158,10 +216,12 @@ class HeliosSource(Source):
             bare=True,
         ).json()
         titles: dict[str, dict] = {}
-        per_day: dict[tuple[str, str], list[dict]] = defaultdict(list)
-        for s in screenings:
-            per_day[(s["movieId"], s["screeningTimeFrom"][:10])].append(s)
-        for (movie_id, day), shows in sorted(per_day.items()):
+        # Two halls at the same minute (dubbing and subtitles) are one entry with both versions.
+        slots: dict[tuple[str, str], list[str]] = {}
+        for s in sorted(screenings, key=lambda s: s["screeningTimeFrom"]):
+            kind = f"{s.get('printType') or ''} {s.get('speakingType') or s.get('language') or ''}".strip()
+            slots.setdefault((s["movieId"], s["screeningTimeFrom"]), []).append(kind)
+        for (movie_id, ts), kinds in slots.items():
             if movie_id not in titles:
                 try:
                     titles[movie_id] = http.get(f"{self.API}/movie/{movie_id}", bare=True).json()
@@ -172,19 +232,7 @@ class HeliosSource(Source):
             name = movie.get("title") or movie.get("name") or movie.get("originalTitle")
             if not name:
                 continue
-            shows.sort(key=lambda s: s["screeningTimeFrom"])
-            times = " · ".join(
-                f"{s['screeningTimeFrom'][11:16]} {(s.get('printType') or '')} {(s.get('speakingType') or s.get('language') or '')}".strip()
-                for s in shows
-            )
-            ev = self.make_event(
-                title=f"{name} ({self.cfg.name})",
-                start=shows[0]["screeningTimeFrom"],
-                url=self.cfg.url,
-                description=f"Seanse: {times}",
-                image=(movie.get("posters") or [None])[0],
-                categories=["kino"],
-            )
+            ev = _screening(self, film=name, cinema=self.cfg.name, day=ts[:10], hm=ts[11:16], url=self.cfg.url,
+                            kinds=kinds, image=(movie.get("posters") or [None])[0])
             if ev:
-                ev.in_main = False
                 yield ev

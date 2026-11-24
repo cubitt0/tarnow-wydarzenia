@@ -345,7 +345,7 @@ def test_same_venue_same_time_merges_differently_worded_titles():
     assert len(andrz) == 1
 
 
-def test_kino_marzenie_day_listing_has_times_and_ticket_links():
+def test_kino_marzenie_one_event_per_screening_with_ticket_link():
     from selectolax.lexbor import LexborHTMLParser as HTMLParser
     from tarnow_events.config import SourceConfig, Settings
     from tarnow_events.sources.cinemas import KinoMarzenieSource
@@ -353,22 +353,82 @@ def test_kino_marzenie_day_listing_has_times_and_ticket_links():
     <div class="row item"><a href="/repertuar/1052,ebenezer"><img src="https://www.kinomarzenie.pl/p.jpeg"/></a>
       <h4><a class="color-0" href="/repertuar/1052,ebenezer"><span class="sr-only">Zobacz więcej na temat:</span>
         EBENEZER SCROOGE</a></h4><span class="d-block color-3 small">FANTASY | 12+ LAT</span>
-      <div class="d-flex"><div class="d-flex flex-wrap"><span>NAPISY</span></div>
-        <a class="btn" href="https://marzenieonline.tck.pl/MSI/Default.aspx?event_id=2"><span>Kup bilet</span>
-          <span><span class="sr-only">Czwartek 26-11-2026 na godzinę</span> 19:30</span></a></div>
       <div class="d-flex"><div class="d-flex flex-wrap"><span>DUBBING</span></div>
         <a class="btn" href="https://marzenieonline.tck.pl/MSI/Default.aspx?event_id=1"><span>Kup bilet</span>
           <span><span class="sr-only">Czwartek 26-11-2026 na godzinę</span> 16:45</span></a></div>
+      <div class="d-flex"><div class="d-flex flex-wrap"><span>NAPISY</span></div>
+        <a class="btn" href="https://marzenieonline.tck.pl/MSI/Default.aspx?event_id=2"><span>Kup bilet</span>
+          <span><span class="sr-only">Czwartek 26-11-2026 na godzinę</span> 19:30</span></a></div>
     </div>
     <div class="row item"><h4><a href="/repertuar/1051,lalka">LALKA</a></h4></div>"""
     cfg = SourceConfig(id="kino-marzenie", name="Kino Marzenie", type="kinomarzenie", url="https://www.kinomarzenie.pl/repertuar",
                        town="Tarnów", options={"main_feed": False})
     out = list(KinoMarzenieSource(cfg, Settings.from_env()).parse_day(HTMLParser(html), "2026-11-26"))
-    assert len(out) == 1  # a film without screenings that day is skipped
-    e = out[0]
-    assert e.title == "EBENEZER SCROOGE (Kino Marzenie)" and e.start.hour == 16 and e.start.minute == 45
-    assert e.tickets.endswith("event_id=1") and e.source.url == "https://www.kinomarzenie.pl/repertuar/1052,ebenezer"
-    assert e.description.startswith("Seanse: 16:45 DUBBING · 19:30 NAPISY") and not e.in_main
+    assert [(e.start.hour, e.start.minute) for e in out] == [(16, 45), (19, 30)]  # a film without screenings is skipped
+    assert [e.tickets[-1] for e in out] == ["1", "2"]
+    assert out[0].title == "EBENEZER SCROOGE (Kino Marzenie)" and out[0].description.startswith("Seans: DUBBING")
+    assert out[0].source.url == "https://www.kinomarzenie.pl/repertuar?start_date=2026-11-26&end_date=2026-11-26"
+    assert not out[0].in_main
+
+
+def test_kino_millenium_screenings_from_kino_tarnow_pl():
+    from selectolax.lexbor import LexborHTMLParser as HTMLParser
+    from tarnow_events.config import SourceConfig, Settings
+    from tarnow_events.sources.cinemas import KinoTarnowSource
+    html = """
+    <div class="row gx-2 gx-md-3 item-box-1"><img class="media" src="https://kino.tarnow.pl/h.jpg" alt="Hokus">
+      <ul class="meta-tags"><li class="item"><span class="visually-hidden">Gatunek:</span><span>animacja</span></li></ul>
+      <h3 class="display-3">Hokus: Królestwo magii</h3>
+      <a class="btn btn-ticket" href="https://bilety.csm.tarnow.pl/Kino/default.aspx?event_id=7&amp;typetran=0&amp;returnlink=http://localhost/">
+        <span><span class="display-4 fw-semibold"><span class="visually-hidden">2026.11.25, godzina:</span> 14:00</span>
+        <span class="display-6 text-white text-uppercase ms-1">sala duża</span></span>
+        <span class="display-6 text-secondary-300">2D • DUBBING</span></a>
+      <a class="btn btn-ticket" href="https://bilety.csm.tarnow.pl/Kino/default.aspx?event_id=8&amp;typetran=0">
+        <span><span class="display-4 fw-semibold"><span class="visually-hidden">2026.11.25, godzina:</span> 16:00</span></span></a>
+    </div>"""
+    cfg = SourceConfig(id="kino-millenium", name="Kino Millenium (CSM)", type="kinotarnow", url="https://kino.tarnow.pl/wydarzenia/repertuar",
+                       town="Tarnów", options={"main_feed": False})
+    out = list(KinoTarnowSource(cfg, Settings.from_env()).parse_day(HTMLParser(html), "2026-11-25"))
+    assert [f"{e.start:%H:%M}" for e in out] == ["14:00", "16:00"]
+    assert out[0].title == "Hokus: Królestwo magii (Kino Millenium (CSM))"
+    assert "event_id=7" in out[0].tickets and "localhost" not in out[0].tickets
+    assert out[0].description.startswith("Seans: 2D • DUBBING / sala duża")
+    assert out[0].source.url == "https://kino.tarnow.pl/wydarzenia/repertuar?startDate=2026-11-25&endDate=2026-11-25"
+
+
+def test_screenings_stay_separate_but_merge_across_sources():
+    t = T.replace(hour=10)
+    def show(src, start):
+        e = ev("Lalka (Kino Sokół)", start, src=src, url=f"https://{src}.pl/lalka"); e.in_main = False
+        return e
+    out = deduplicate([show("filmweb", t), show("filmweb", t + timedelta(minutes=45)), show("bilety24", t)], {})
+    assert len(out) == 2
+    assert {r.source_id for r in out[0].all_sources()} == {"filmweb", "bilety24"}
+    assert len({e.uid for e in out}) == 2
+
+
+def test_theatre_links_play_page_and_falls_back_to_box_office():
+    from tarnow_events.config import SourceConfig
+    from tarnow_events.pipeline import apply_tickets_fallback
+    from tarnow_events.sources.embedded_json import _dig
+    obj = {"permalink": "https://teatr.tarnow.pl/class/x/?wcs_timestamp=1",
+           "buttons": {"related_post": {"href": "https://teatr.tarnow.pl/spektakle/x/"}, "main": None}}
+    assert _dig(obj, "buttons.related_post.href") == "https://teatr.tarnow.pl/spektakle/x/"
+    assert _dig(obj, "buttons.main.href") is None
+    box = "https://www.bilety24.pl/organizator/teatr-1151.html"
+    cfgs = [SourceConfig(id="teatr", name="T", type="embedded_json", url="https://t.pl", options={"tickets_fallback": box})]
+    a, b, c = ev("Dziady", T, src="teatr"), ev("Dziady", T, src="teatr"), ev("Koncert", T, src="inne")
+    b.tickets = "https://www.bilety24.pl/kup-bilet-na-1151-dziady-1"
+    apply_tickets_fallback([a, b, c], cfgs)
+    assert a.tickets == box and b.tickets.endswith("dziady-1") and c.tickets is None
+
+
+def test_filmweb_poster_is_requested_large():
+    from tarnow_events.sources.cinemas import big_poster
+    assert big_poster("https://fwcdn.pl/fpo/32/13/10103213/8275725.7.webp") == "https://fwcdn.pl/fpo/32/13/10103213/8275725.8.webp"
+    assert big_poster("https://fwcdn.pl/fpo/32/13/10103213/8275725.2.jpg") == "https://fwcdn.pl/fpo/32/13/10103213/8275725.3.jpg"
+    assert big_poster("https://example.com/a.7.webp") == "https://example.com/a.7.webp"
+    assert big_poster(None) is None
 
 
 def test_every_page_has_a_preview_image():
