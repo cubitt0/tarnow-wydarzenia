@@ -137,7 +137,7 @@ sources.yaml ─► adaptery ─► normalizacja ─► geokodowanie + filtr 50 
 - **Repertuar kin** trafia tylko do `kino.ics`, żeby nie zasłaniał innych wydarzeń.
 - **Stabilne UID:** gdy wydarzenie dostaje nowe źródło, aplikacja kalendarza aktualizuje je zamiast dodawać drugi raz.
 
-**Infrastruktura (0 zł):** GitHub Actions uruchamia pobieranie codziennie o 12:00, GitHub Pages serwuje pliki `.ics`
+**Infrastruktura:** GitHub Actions uruchamia pobieranie codziennie o 12:00, GitHub Pages serwuje pliki `.ics`
 i stronę z kalendarzem.
 
 **Zużycie Gemini (oszczędnie z kluczem):**
