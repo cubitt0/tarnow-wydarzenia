@@ -37,6 +37,8 @@ class Settings:
     days_back: int
     days_ahead: int
     public_base_url: str
+    adsense_client: str | None = None  # ca-pub-…; with adsense_slot turns on the banner (ads.py)
+    adsense_slot: str | None = None
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -59,6 +61,8 @@ class Settings:
             days_back=int(os.environ.get("TE_DAYS_BACK", "7")),
             days_ahead=int(os.environ.get("TE_DAYS_AHEAD", "365")),
             public_base_url=os.environ.get("TE_PUBLIC_BASE_URL", "http://localhost:8080").rstrip("/"),
+            adsense_client=os.environ.get("TE_ADSENSE_CLIENT") or None,
+            adsense_slot=os.environ.get("TE_ADSENSE_SLOT") or None,
         )
 
 

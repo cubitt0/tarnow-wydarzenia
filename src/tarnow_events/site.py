@@ -56,6 +56,8 @@ def render_index(settings, feeds, events, configs, stats) -> str:
     return f"""<!doctype html><html lang=pl><head><meta charset=utf-8>
 <meta name=viewport content="width=device-width,initial-scale=1">
 <title>Tarnów Wydarzenia</title>
+<link rel="icon" href="favicon.ico" sizes="48x48">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
 <style>
 :root{{--bg:#fff;--fg:#1b1b1b;--mut:#666;--line:#e4e4e4;--acc:#0b5fff}}
 @media (prefers-color-scheme:dark){{:root{{--bg:#121212;--fg:#eee;--mut:#9a9a9a;--line:#2c2c2c;--acc:#7aa7ff}}}}

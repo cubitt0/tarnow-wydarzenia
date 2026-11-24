@@ -6,11 +6,11 @@ i warsztaty. Kalendarz zbiera wydarzenia z ponad 120 źródeł, usuwa duplikaty 
 sam codziennie o 12:00. Możesz go oglądać w przeglądarce albo zasubskrybować w Google Calendar,
 Apple Calendar lub Outlooku.
 
-[![Otwórz kalendarz wydarzeń Tarnowa](https://img.shields.io/badge/Otw%C3%B3rz_kalendarz-Tarn%C3%B3w_i_okolice-3a5ba9?style=for-the-badge&logo=googlecalendar&logoColor=white)](https://cubitt0.github.io/tarnow-wydarzenia/)
-[![Pobierz iCal – wszystkie wydarzenia](https://img.shields.io/badge/iCal-wszystkie_wydarzenia-1f7a4d?style=for-the-badge&logo=icloud&logoColor=white)](https://cubitt0.github.io/tarnow-wydarzenia/wszystkie.ics)
-[![Dodaj do Google Calendar](https://img.shields.io/badge/Google_Calendar-dodaj-4285F4?style=for-the-badge&logo=googlecalendar&logoColor=white)](https://calendar.google.com/calendar/r?cid=webcal%3A%2F%2Fcubitt0.github.io%2Ftarnow-wydarzenia%2Fwszystkie.ics)
+[![Otwórz kalendarz wydarzeń Tarnowa](https://img.shields.io/badge/Otw%C3%B3rz_kalendarz-Tarn%C3%B3w_i_okolice-3a5ba9?style=for-the-badge&logo=googlecalendar&logoColor=white)](https://tarnow-wydarzenia.pl/)
+[![Pobierz iCal – wszystkie wydarzenia](https://img.shields.io/badge/iCal-wszystkie_wydarzenia-1f7a4d?style=for-the-badge&logo=icloud&logoColor=white)](https://tarnow-wydarzenia.pl/wszystkie.ics)
+[![Dodaj do Google Calendar](https://img.shields.io/badge/Google_Calendar-dodaj-4285F4?style=for-the-badge&logo=googlecalendar&logoColor=white)](https://calendar.google.com/calendar/r?cid=webcal%3A%2F%2Ftarnow-wydarzenia.pl%2Fwszystkie.ics)
 
-🔗 **Kalendarz online:** https://cubitt0.github.io/tarnow-wydarzenia/
+🔗 **Kalendarz online:** https://tarnow-wydarzenia.pl/
 
 Na stronie: widok dnia z kartami wydarzeń, tydzień i miesiąc, przełącznik **Tarnów + 50 km / Tarnów / Okolice**,
 filtry kategorii, szybkie „Dziś / Jutro / Weekend”, wyszukiwarka, tryb ciemny i szczegóły wydarzenia
@@ -27,25 +27,25 @@ same: nie trzeba niczego pobierać ponownie.
 
 | Kalendarz | iCal (.ics) | Google Calendar |
 |---|---|---|
-| **Wszystko** – Tarnów + 50 km | [![iCal](https://img.shields.io/badge/iCal-wszystkie.ics-3a5ba9?style=flat-square)](https://cubitt0.github.io/tarnow-wydarzenia/wszystkie.ics) | [![Google](https://img.shields.io/badge/Google-dodaj-4285F4?style=flat-square&logo=googlecalendar&logoColor=white)](https://calendar.google.com/calendar/r?cid=webcal%3A%2F%2Fcubitt0.github.io%2Ftarnow-wydarzenia%2Fwszystkie.ics) |
-| **Tarnów** – tylko miasto | [![iCal](https://img.shields.io/badge/iCal-tarnow.ics-3a5ba9?style=flat-square)](https://cubitt0.github.io/tarnow-wydarzenia/tarnow.ics) | [![Google](https://img.shields.io/badge/Google-dodaj-4285F4?style=flat-square&logo=googlecalendar&logoColor=white)](https://calendar.google.com/calendar/r?cid=webcal%3A%2F%2Fcubitt0.github.io%2Ftarnow-wydarzenia%2Ftarnow.ics) |
-| **Okolice** – Dębica, Brzesko, Dąbrowa Tarnowska, Tuchów, Gorlice, Bochnia… | [![iCal](https://img.shields.io/badge/iCal-okolice.ics-3a5ba9?style=flat-square)](https://cubitt0.github.io/tarnow-wydarzenia/okolice.ics) | [![Google](https://img.shields.io/badge/Google-dodaj-4285F4?style=flat-square&logo=googlecalendar&logoColor=white)](https://calendar.google.com/calendar/r?cid=webcal%3A%2F%2Fcubitt0.github.io%2Ftarnow-wydarzenia%2Fokolice.ics) |
-| **Wystawy trwające** – ekspozycje dłuższe niż tydzień | [![iCal](https://img.shields.io/badge/iCal-dlugie.ics-3a5ba9?style=flat-square)](https://cubitt0.github.io/tarnow-wydarzenia/dlugie.ics) | [![Google](https://img.shields.io/badge/Google-dodaj-4285F4?style=flat-square&logo=googlecalendar&logoColor=white)](https://calendar.google.com/calendar/r?cid=webcal%3A%2F%2Fcubitt0.github.io%2Ftarnow-wydarzenia%2Fdlugie.ics) |
+| **Wszystko** – Tarnów + 50 km | [![iCal](https://img.shields.io/badge/iCal-wszystkie.ics-3a5ba9?style=flat-square)](https://tarnow-wydarzenia.pl/wszystkie.ics) | [![Google](https://img.shields.io/badge/Google-dodaj-4285F4?style=flat-square&logo=googlecalendar&logoColor=white)](https://calendar.google.com/calendar/r?cid=webcal%3A%2F%2Ftarnow-wydarzenia.pl%2Fwszystkie.ics) |
+| **Tarnów** – tylko miasto | [![iCal](https://img.shields.io/badge/iCal-tarnow.ics-3a5ba9?style=flat-square)](https://tarnow-wydarzenia.pl/tarnow.ics) | [![Google](https://img.shields.io/badge/Google-dodaj-4285F4?style=flat-square&logo=googlecalendar&logoColor=white)](https://calendar.google.com/calendar/r?cid=webcal%3A%2F%2Ftarnow-wydarzenia.pl%2Ftarnow.ics) |
+| **Okolice** – Dębica, Brzesko, Dąbrowa Tarnowska, Tuchów, Gorlice, Bochnia… | [![iCal](https://img.shields.io/badge/iCal-okolice.ics-3a5ba9?style=flat-square)](https://tarnow-wydarzenia.pl/okolice.ics) | [![Google](https://img.shields.io/badge/Google-dodaj-4285F4?style=flat-square&logo=googlecalendar&logoColor=white)](https://calendar.google.com/calendar/r?cid=webcal%3A%2F%2Ftarnow-wydarzenia.pl%2Fokolice.ics) |
+| **Wystawy trwające** – ekspozycje dłuższe niż tydzień | [![iCal](https://img.shields.io/badge/iCal-dlugie.ics-3a5ba9?style=flat-square)](https://tarnow-wydarzenia.pl/dlugie.ics) | [![Google](https://img.shields.io/badge/Google-dodaj-4285F4?style=flat-square&logo=googlecalendar&logoColor=white)](https://calendar.google.com/calendar/r?cid=webcal%3A%2F%2Ftarnow-wydarzenia.pl%2Fdlugie.ics) |
 
 ### Według kategorii
 
 | Kategoria | iCal (.ics) | Google Calendar |
 |---|---|---|
-| 🎵 **Koncerty i muzyka** | [![iCal](https://img.shields.io/badge/iCal-koncerty.ics-b3261e?style=flat-square)](https://cubitt0.github.io/tarnow-wydarzenia/kategoria/koncerty.ics) | [![Google](https://img.shields.io/badge/Google-dodaj-4285F4?style=flat-square&logo=googlecalendar&logoColor=white)](https://calendar.google.com/calendar/r?cid=webcal%3A%2F%2Fcubitt0.github.io%2Ftarnow-wydarzenia%2Fkategoria%2Fkoncerty.ics) |
-| 🎭 **Teatr, kabaret, stand-up** | [![iCal](https://img.shields.io/badge/iCal-teatr.ics-7d5260?style=flat-square)](https://cubitt0.github.io/tarnow-wydarzenia/kategoria/teatr.ics) | [![Google](https://img.shields.io/badge/Google-dodaj-4285F4?style=flat-square&logo=googlecalendar&logoColor=white)](https://calendar.google.com/calendar/r?cid=webcal%3A%2F%2Fcubitt0.github.io%2Ftarnow-wydarzenia%2Fkategoria%2Fteatr.ics) |
-| 🎬 **Kino i film** (repertuar 12 kin: Multikino, Millenium, Marzenie, Dębica, Brzesko, Dąbrowa, Tuchów, Radłów, Bochnia, Biecz, Nowy Sącz…) | [![iCal](https://img.shields.io/badge/iCal-kino.ics-8b5000?style=flat-square)](https://cubitt0.github.io/tarnow-wydarzenia/kategoria/kino.ics) | [![Google](https://img.shields.io/badge/Google-dodaj-4285F4?style=flat-square&logo=googlecalendar&logoColor=white)](https://calendar.google.com/calendar/r?cid=webcal%3A%2F%2Fcubitt0.github.io%2Ftarnow-wydarzenia%2Fkategoria%2Fkino.ics) |
-| ⚽ **Sport i rekreacja** | [![iCal](https://img.shields.io/badge/iCal-sport.ics-1f7a4d?style=flat-square)](https://cubitt0.github.io/tarnow-wydarzenia/kategoria/sport.ics) | [![Google](https://img.shields.io/badge/Google-dodaj-4285F4?style=flat-square&logo=googlecalendar&logoColor=white)](https://calendar.google.com/calendar/r?cid=webcal%3A%2F%2Fcubitt0.github.io%2Ftarnow-wydarzenia%2Fkategoria%2Fsport.ics) |
-| 🖼️ **Wystawy i muzea** | [![iCal](https://img.shields.io/badge/iCal-wystawy.ics-735c00?style=flat-square)](https://cubitt0.github.io/tarnow-wydarzenia/kategoria/wystawy.ics) | [![Google](https://img.shields.io/badge/Google-dodaj-4285F4?style=flat-square&logo=googlecalendar&logoColor=white)](https://calendar.google.com/calendar/r?cid=webcal%3A%2F%2Fcubitt0.github.io%2Ftarnow-wydarzenia%2Fkategoria%2Fwystawy.ics) |
-| 🧸 **Dzieci i rodzina** | [![iCal](https://img.shields.io/badge/iCal-dzieci.ics-006a6a?style=flat-square)](https://cubitt0.github.io/tarnow-wydarzenia/kategoria/dzieci.ics) | [![Google](https://img.shields.io/badge/Google-dodaj-4285F4?style=flat-square&logo=googlecalendar&logoColor=white)](https://calendar.google.com/calendar/r?cid=webcal%3A%2F%2Fcubitt0.github.io%2Ftarnow-wydarzenia%2Fkategoria%2Fdzieci.ics) |
-| 💬 **Spotkania, wykłady, warsztaty, spacery** | [![iCal](https://img.shields.io/badge/iCal-spotkania.ics-3a5ba9?style=flat-square)](https://cubitt0.github.io/tarnow-wydarzenia/kategoria/spotkania.ics) | [![Google](https://img.shields.io/badge/Google-dodaj-4285F4?style=flat-square&logo=googlecalendar&logoColor=white)](https://calendar.google.com/calendar/r?cid=webcal%3A%2F%2Fcubitt0.github.io%2Ftarnow-wydarzenia%2Fkategoria%2Fspotkania.ics) |
-| 🪩 **Imprezy, kluby, puby** | [![iCal](https://img.shields.io/badge/iCal-imprezy.ics-9c4146?style=flat-square)](https://cubitt0.github.io/tarnow-wydarzenia/kategoria/imprezy.ics) | [![Google](https://img.shields.io/badge/Google-dodaj-4285F4?style=flat-square&logo=googlecalendar&logoColor=white)](https://calendar.google.com/calendar/r?cid=webcal%3A%2F%2Fcubitt0.github.io%2Ftarnow-wydarzenia%2Fkategoria%2Fimprezy.ics) |
-| 🎪 **Festiwale, jarmarki, plenery** | [![iCal](https://img.shields.io/badge/iCal-festiwale.ics-4c662b?style=flat-square)](https://cubitt0.github.io/tarnow-wydarzenia/kategoria/festiwale.ics) | [![Google](https://img.shields.io/badge/Google-dodaj-4285F4?style=flat-square&logo=googlecalendar&logoColor=white)](https://calendar.google.com/calendar/r?cid=webcal%3A%2F%2Fcubitt0.github.io%2Ftarnow-wydarzenia%2Fkategoria%2Ffestiwale.ics) |
-| ⛪ **Uroczystości religijne i patriotyczne** | [![iCal](https://img.shields.io/badge/iCal-uroczystosci.ics-5d5e67?style=flat-square)](https://cubitt0.github.io/tarnow-wydarzenia/kategoria/uroczystosci.ics) | [![Google](https://img.shields.io/badge/Google-dodaj-4285F4?style=flat-square&logo=googlecalendar&logoColor=white)](https://calendar.google.com/calendar/r?cid=webcal%3A%2F%2Fcubitt0.github.io%2Ftarnow-wydarzenia%2Fkategoria%2Furoczystosci.ics) |
+| 🎵 **Koncerty i muzyka** | [![iCal](https://img.shields.io/badge/iCal-koncerty.ics-b3261e?style=flat-square)](https://tarnow-wydarzenia.pl/kategoria/koncerty.ics) | [![Google](https://img.shields.io/badge/Google-dodaj-4285F4?style=flat-square&logo=googlecalendar&logoColor=white)](https://calendar.google.com/calendar/r?cid=webcal%3A%2F%2Ftarnow-wydarzenia.pl%2Fkategoria%2Fkoncerty.ics) |
+| 🎭 **Teatr, kabaret, stand-up** | [![iCal](https://img.shields.io/badge/iCal-teatr.ics-7d5260?style=flat-square)](https://tarnow-wydarzenia.pl/kategoria/teatr.ics) | [![Google](https://img.shields.io/badge/Google-dodaj-4285F4?style=flat-square&logo=googlecalendar&logoColor=white)](https://calendar.google.com/calendar/r?cid=webcal%3A%2F%2Ftarnow-wydarzenia.pl%2Fkategoria%2Fteatr.ics) |
+| 🎬 **Kino i film** (repertuar 12 kin: Multikino, Millenium, Marzenie, Dębica, Brzesko, Dąbrowa, Tuchów, Radłów, Bochnia, Biecz, Nowy Sącz…) | [![iCal](https://img.shields.io/badge/iCal-kino.ics-8b5000?style=flat-square)](https://tarnow-wydarzenia.pl/kategoria/kino.ics) | [![Google](https://img.shields.io/badge/Google-dodaj-4285F4?style=flat-square&logo=googlecalendar&logoColor=white)](https://calendar.google.com/calendar/r?cid=webcal%3A%2F%2Ftarnow-wydarzenia.pl%2Fkategoria%2Fkino.ics) |
+| ⚽ **Sport i rekreacja** | [![iCal](https://img.shields.io/badge/iCal-sport.ics-1f7a4d?style=flat-square)](https://tarnow-wydarzenia.pl/kategoria/sport.ics) | [![Google](https://img.shields.io/badge/Google-dodaj-4285F4?style=flat-square&logo=googlecalendar&logoColor=white)](https://calendar.google.com/calendar/r?cid=webcal%3A%2F%2Ftarnow-wydarzenia.pl%2Fkategoria%2Fsport.ics) |
+| 🖼️ **Wystawy i muzea** | [![iCal](https://img.shields.io/badge/iCal-wystawy.ics-735c00?style=flat-square)](https://tarnow-wydarzenia.pl/kategoria/wystawy.ics) | [![Google](https://img.shields.io/badge/Google-dodaj-4285F4?style=flat-square&logo=googlecalendar&logoColor=white)](https://calendar.google.com/calendar/r?cid=webcal%3A%2F%2Ftarnow-wydarzenia.pl%2Fkategoria%2Fwystawy.ics) |
+| 🧸 **Dzieci i rodzina** | [![iCal](https://img.shields.io/badge/iCal-dzieci.ics-006a6a?style=flat-square)](https://tarnow-wydarzenia.pl/kategoria/dzieci.ics) | [![Google](https://img.shields.io/badge/Google-dodaj-4285F4?style=flat-square&logo=googlecalendar&logoColor=white)](https://calendar.google.com/calendar/r?cid=webcal%3A%2F%2Ftarnow-wydarzenia.pl%2Fkategoria%2Fdzieci.ics) |
+| 💬 **Spotkania, wykłady, warsztaty, spacery** | [![iCal](https://img.shields.io/badge/iCal-spotkania.ics-3a5ba9?style=flat-square)](https://tarnow-wydarzenia.pl/kategoria/spotkania.ics) | [![Google](https://img.shields.io/badge/Google-dodaj-4285F4?style=flat-square&logo=googlecalendar&logoColor=white)](https://calendar.google.com/calendar/r?cid=webcal%3A%2F%2Ftarnow-wydarzenia.pl%2Fkategoria%2Fspotkania.ics) |
+| 🪩 **Imprezy, kluby, puby** | [![iCal](https://img.shields.io/badge/iCal-imprezy.ics-9c4146?style=flat-square)](https://tarnow-wydarzenia.pl/kategoria/imprezy.ics) | [![Google](https://img.shields.io/badge/Google-dodaj-4285F4?style=flat-square&logo=googlecalendar&logoColor=white)](https://calendar.google.com/calendar/r?cid=webcal%3A%2F%2Ftarnow-wydarzenia.pl%2Fkategoria%2Fimprezy.ics) |
+| 🎪 **Festiwale, jarmarki, plenery** | [![iCal](https://img.shields.io/badge/iCal-festiwale.ics-4c662b?style=flat-square)](https://tarnow-wydarzenia.pl/kategoria/festiwale.ics) | [![Google](https://img.shields.io/badge/Google-dodaj-4285F4?style=flat-square&logo=googlecalendar&logoColor=white)](https://calendar.google.com/calendar/r?cid=webcal%3A%2F%2Ftarnow-wydarzenia.pl%2Fkategoria%2Ffestiwale.ics) |
+| ⛪ **Uroczystości religijne i patriotyczne** | [![iCal](https://img.shields.io/badge/iCal-uroczystosci.ics-5d5e67?style=flat-square)](https://tarnow-wydarzenia.pl/kategoria/uroczystosci.ics) | [![Google](https://img.shields.io/badge/Google-dodaj-4285F4?style=flat-square&logo=googlecalendar&logoColor=white)](https://calendar.google.com/calendar/r?cid=webcal%3A%2F%2Ftarnow-wydarzenia.pl%2Fkategoria%2Furoczystosci.ics) |
 
 ### Jak dodać kalendarz
 
@@ -61,8 +61,8 @@ same: nie trzeba niczego pobierać ponownie.
 
 Kalendarz łączy ponad 120 źródeł. Pełny katalog 200 sprawdzonych źródeł jest w
 [docs/SOURCES.md](docs/SOURCES.md) oraz na stronie
-[katalog źródeł](https://cubitt0.github.io/tarnow-wydarzenia/katalog-zrodel.html). Stan każdego źródła
-po ostatniej aktualizacji: [źródła i status](https://cubitt0.github.io/tarnow-wydarzenia/zrodla.html).
+[katalog źródeł](https://tarnow-wydarzenia.pl/katalog-zrodel.html). Stan każdego źródła
+po ostatniej aktualizacji: [źródła i status](https://tarnow-wydarzenia.pl/zrodla.html).
 
 - **Miasto Tarnów:** kalendarz Tarnowskiego Centrum Informacji (it.tarnow.pl), kultura.tarnow.pl, kalendarz sportowy UM Tarnowa.
 - **Kultura:** Teatr im. Ludwika Solskiego, Tarnowskie Centrum Kultury, BWA Tarnów, Centrum Sztuki Mościce,
@@ -82,7 +82,7 @@ kalendarz pokazuje je raz, z listą wszystkich źródeł w opisie.
 ## FAQ
 
 **Gdzie sprawdzić, co się dzieje w Tarnowie w ten weekend?**
-Na stronie [cubitt0.github.io/tarnow-wydarzenia](https://cubitt0.github.io/tarnow-wydarzenia/) w widoku
+Na stronie [tarnow-wydarzenia.pl](https://tarnow-wydarzenia.pl/) w widoku
 *Tydzień* albo *Dzień*. Kategorie (koncerty, teatr, kino, sport…) włączasz i wyłączasz przyciskami nad kalendarzem.
 
 **Jak dodać koncerty w Tarnowie do Google Calendar?**

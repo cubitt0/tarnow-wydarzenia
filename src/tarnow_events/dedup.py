@@ -86,7 +86,7 @@ def merge(cluster: list[Event]) -> Event:
     cluster = sorted(cluster, key=lambda e: (e.priority, _richness(e)), reverse=True)
     primary = cluster[0]
     for other in cluster[1:]:
-        for f in ("description", "location_name", "address", "town", "lat", "lon", "image", "price", "end"):
+        for f in ("description", "location_name", "address", "town", "lat", "lon", "image", "price", "tickets", "end"):
             if getattr(primary, f) in (None, "") and getattr(other, f) not in (None, ""):
                 setattr(primary, f, getattr(other, f))
         if primary.all_day and not other.all_day:

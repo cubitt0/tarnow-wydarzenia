@@ -159,8 +159,8 @@ def test_logo_repeated_across_pages_is_ignored(tmp_path):
     import json, time
     from tarnow_events.images import enrich_images
     now = time.time()
-    cache = {f"https://x.pl/e/{i}": ["https://x.pl/logo.png", now] for i in range(3)}
-    cache["https://x.pl/e/9"] = ["https://x.pl/poster9.jpg", now]
+    cache = {f"https://x.pl/e/{i}": {"i": "https://x.pl/logo.png", "t": now, "k": []} for i in range(3)}
+    cache["https://x.pl/e/9"] = {"i": "https://x.pl/poster9.jpg", "t": now, "k": []}
     (tmp_path / "images.json").write_text(json.dumps(cache))
     a = ev("A", T, src="x", url="https://x.pl/e/1")
     b = ev("B", T, src="x", url="https://x.pl/e/9")
@@ -221,3 +221,76 @@ def test_rss_events_link_to_their_article():
     assert src._article_url({"title": "Koncert kolęd", "url": feed}, arts) == "https://h.pl/artykul/1"
     assert src._article_url({"title": "Mecz", "url": None}, arts) is None  # ambiguous: no guessing
     assert src._article_url({"title": "X", "url": "https://h.pl/artykul/9"}, arts) == "https://h.pl/artykul/9"
+
+
+def test_long_description_is_cut_at_a_word_with_ellipsis():
+    from tarnow_events.pipeline import DESC_CHARS, short_desc
+    text = "Zapraszamy na koncert. " * 60
+    out = short_desc(text)
+    assert out.endswith("…") and len(out) <= DESC_CHARS + 1 and not out[:-1].endswith(("Zaprasz", " "))
+    assert short_desc("Krótki opis.") == "Krótki opis." and short_desc("") is None
+
+
+def test_ticket_link_belongs_to_the_event():
+    from tarnow_events.tickets import choose_ticket, free_ticket, is_ticket_url, page_ticket_candidates
+    assert is_ticket_url("https://www.ebilet.pl/muzyka/rock/kult/") and is_ticket_url("https://bilety.teatr.tarnow.pl/spektakl/12")
+    assert not is_ticket_url("https://biletyna.pl/") and not is_ticket_url("https://teatr.tarnow.pl/repertuar/")
+    html = """<html><body><header><a href="https://www.ebilet.pl/teatr/inny-spektakl/">Kup</a></header>
+      <article><h1>Dziady</h1><p>Bilety: <a href="https://biletyna.pl/teatr/Dziady/Tarnow">kup bilet</a></p></article>
+      <footer><a href="https://www.bilety24.pl/wydarzenie/cos-innego-123">Polecamy</a></footer></body></html>"""
+    cands = page_ticket_candidates(html, "https://teatr.pl/dziady")
+    assert len(cands) == 3 and sum(c["c"] for c in cands) == 2  # header + footer are not the event's
+    assert choose_ticket(ev("Dziady – spektakl", T), cands) == "https://biletyna.pl/teatr/Dziady/Tarnow"
+    # Several shop links in the content and none names the event: no guessing.
+    many = [{"u": f"https://www.ebilet.pl/x/inne-{i}/", "x": "", "c": 0, "j": 0} for i in range(3)]
+    assert choose_ticket(ev("Jazz w Bazie", T), many) is None
+    e = ev("Kult", T, url="https://kult.pl/trasa"); e.description = "Bilety: https://www.ebilet.pl/muzyka/rock/kult/."
+    assert free_ticket(e) == "https://www.ebilet.pl/muzyka/rock/kult/"
+
+
+def test_slugify_polish_and_length():
+    from tarnow_events.seo import slugify
+    assert slugify("Łódź – Żółć: koncert „Kult” #2") == "lodz-zolc-koncert-kult-2"
+    assert slugify("!!!") == "wydarzenie"
+    assert len(slugify("słowo " * 40)) <= 70 and not slugify("słowo " * 40).endswith("-")
+
+
+def test_seo_pages_sitemap_and_jsonld(tmp_path):
+    import json
+    import re
+
+    from tarnow_events.seo import write_seo
+    a, b = ev("Koncert Kult", T, src="a"), ev("Koncert Kult", T + timedelta(hours=2), src="b")
+    past = ev("Było", T - timedelta(days=3), src="c")
+    cinema = ev("Seans", T, src="d")
+    cinema.in_main = False
+    for i, e in enumerate((a, b, past, cinema)):
+        e.uid = f"uid{i}abcdef@x"
+    a.cancelled, a.description = True, "Opis <b>koncertu</b>"
+    pages = write_seo(tmp_path, "https://example.pl", [a, b, past, cinema], T - timedelta(days=1))
+    assert pages == {"uid0abcdef@x": "wydarzenie/2026-12-05/koncert-kult/",
+                     "uid1abcdef@x": "wydarzenie/2026-12-05/koncert-kult-uid1ab/"}
+    html = (tmp_path / pages[a.uid] / "index.html").read_text()
+    assert '<link rel="canonical" href="https://example.pl/wydarzenie/2026-12-05/koncert-kult/">' in html
+    assert "<p class=\"desc\">Opis &lt;b&gt;koncertu" in html and "<b>koncertu</b>" not in html
+    ld = json.loads(re.search(r'<script type="application/ld\+json">(.*?)</script>', html).group(1))
+    assert ld["@type"] == "Event" and ld["eventStatus"].endswith("EventCancelled")
+    assert ld["startDate"] == "2026-12-05T19:00:00+01:00"
+    assert f'href="/{pages[b.uid]}"' in html  # same-day events link to each other
+    sitemap = (tmp_path / "sitemap.xml").read_text()
+    assert sitemap.count("<url>") == 5 and "Było" not in sitemap
+    assert "Sitemap: https://example.pl/sitemap.xml" in (tmp_path / "robots.txt").read_text()
+    assert 'name="robots" content="noindex"' in (tmp_path / "404.html").read_text()
+
+
+def test_ads_off_by_default_and_on_with_both_ids(tmp_path):
+    from tarnow_events.ads import HEAD_MARK, SLOT_MARK, apply_ads
+    page = f"<head>{HEAD_MARK}</head><main>{SLOT_MARK}<footer></footer></main>"
+    (tmp_path / "ads.txt").write_text("stale")
+    off = apply_ads(page, tmp_path, None, None)
+    assert off == "<head></head><main><footer></footer></main>" and not (tmp_path / "ads.txt").exists()
+    assert "adsbygoogle" not in apply_ads(page, tmp_path, "ca-pub-123", "x\"><script>")  # malformed: stays off
+    on = apply_ads(page, tmp_path, "ca-pub-1234567890123456", "9876543210")
+    assert 'data-ad-client="ca-pub-1234567890123456"' in on and 'data-ad-slot="9876543210"' in on
+    assert on.index("adsbygoogle.js") < on.index("</head>") < on.index("<ins") < on.index("<footer>")
+    assert (tmp_path / "ads.txt").read_text() == "google.com, pub-1234567890123456, DIRECT, f08c47fec0942fa0\n"

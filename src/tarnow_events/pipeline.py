@@ -17,6 +17,8 @@ from .geo import Geocoder, canonical_town, correct_tarnow, distance_from_tarnow,
 from .ical_out import build_calendar
 from .models import CATEGORIES, TZ, Event
 from .series import collapse_series, is_long
+from .seo import write_seo
+from .ads import apply_ads
 from .site import render_index
 from .timeinfer import infer_time
 from .sources import REGISTRY
@@ -140,7 +142,7 @@ def run(settings: Settings, only: set[str] | None = None, use_ai: bool = True) -
     if state_path.exists():
         uid_state = json.loads(state_path.read_text()).get("uids", {})
     merged = deduplicate(kept, uid_state)
-    # Pictures from the events' own pages (cinema has posters already; skip it to save requests).
+    # Pictures and ticket links from the events' own pages (cinema has posters already; skip it).
     img_stats = enrich_images([e for e in merged if e.in_main], settings.cache_dir,
                               listing_urls={c.url for c in configs})
 
@@ -167,6 +169,20 @@ def run(settings: Settings, only: set[str] | None = None, use_ai: bool = True) -
     (out / "status.json").write_text(json.dumps(summary, ensure_ascii=False, indent=1))
     log.info("published %d events (raw %d, dropped %s) in %.0fs", len(merged), len(events), dropped, summary["seconds"])
     return summary
+
+
+DESC_CHARS = 700
+
+
+def short_desc(text: str | None) -> str | None:
+    """Descriptions on the page are previews: cut at a word boundary and mark the cut with "…"."""
+    text = (text or "").strip()
+    if len(text) <= DESC_CHARS:
+        return text or None
+    cut = text[:DESC_CHARS]
+    if " " in cut[DESC_CHARS // 2:]:
+        cut = cut[: cut.rfind(" ")]
+    return cut.rstrip(" ,.;:–-\n") + "…"
 
 
 def is_tarnow(e: Event) -> bool:
@@ -212,7 +228,9 @@ def write_outputs(settings: Settings, events: list[Event], configs: list[SourceC
 
     (out / "events.json").write_text(json.dumps([ev_json(e) for e in events], ensure_ascii=False, indent=1))
     (out / "feeds.json").write_text(json.dumps(feeds, ensure_ascii=False, indent=1))
-    cal = json.dumps(calendar_json(events, feeds), ensure_ascii=False, separators=(",", ":"))
+    # Crawlable page per upcoming event, list page, sitemap.xml, robots.txt, 404.html.
+    pages = write_seo(out, settings.public_base_url, events, datetime.now(TZ))
+    cal = json.dumps(calendar_json(events, feeds, pages), ensure_ascii=False, separators=(",", ":"))
     (out / "calendar.json").write_text(cal)
     # The page loads data as a script (works from file:// too, no fetch/CORS concerns).
     (out / "data.js").write_text("window.CAL = " + cal.replace("</", "<\\/") + ";\n")
@@ -221,13 +239,19 @@ def write_outputs(settings: Settings, events: list[Event], configs: list[SourceC
     catalogue = settings.root / "docs" / "sources.html"
     if catalogue.exists():  # research catalogue of every source considered, published as-is
         (out / "katalog-zrodel.html").write_text(catalogue.read_text(encoding="utf-8"), encoding="utf-8")
+    web = Path(__file__).parent / "web"
+    # Site icon (Material "local_activity" ticket, same as the logo); PNG/ICO are pre-rendered from the SVG.
+    for name in ("favicon.svg", "favicon.ico", "apple-touch-icon.png"):
+        (out / name).write_bytes((web / name).read_bytes())
     # The web calendar is a static page that reads calendar.json.
-    (out / "index.html").write_text((Path(__file__).parent / "web" / "kalendarz.html").read_text(encoding="utf-8"),
+    page = (web / "kalendarz.html").read_text(encoding="utf-8")
+    (out / "index.html").write_text(apply_ads(page, out, settings.adsense_client, settings.adsense_slot),
                                     encoding="utf-8")
 
 
-def calendar_json(events: list[Event], feeds: list[dict]) -> dict:
-    """Compact payload for the web calendar (index.html)."""
+def calendar_json(events: list[Event], feeds: list[dict], pages: dict[str, str] | None = None) -> dict:
+    """Compact payload for the web calendar (index.html). pages: uid -> the event's own page (seo.py)."""
+    pages = pages or {}
     rows = []
     for e in events:
         rows.append({
@@ -239,9 +263,12 @@ def calendar_json(events: list[Event], feeds: list[dict]) -> dict:
             "loc": e.location_line(),
             "geo": [round(e.lat, 5), round(e.lon, 5)] if e.lat is not None else None,
             "c": e.categories,
-            "d": (e.description or "")[:700] or None,
+            "d": short_desc(e.description),
+            "dm": len(e.description or "") > DESC_CHARS,  # cut: the page offers "Czytaj więcej"
             "p": e.price,
             "img": e.image,
+            "tk": e.tickets,
+            "u": pages.get(e.uid),
             "src": [[r.source_name, r.url] for r in e.all_sources()],
             "main": e.in_main,
             "long": is_long(e),

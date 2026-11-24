@@ -30,7 +30,7 @@ build-backend = "setuptools.build_meta"
 where = ["src"]
 
 [tool.setuptools.package-data]
-tarnow_events = ["web/*.html"]
+tarnow_events = ["web/*.html", "web/*.svg", "web/*.ico", "web/*.png"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

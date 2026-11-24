@@ -79,6 +79,9 @@ jobs:
           # Max Gemini requests per day (Settings → Secrets and variables → Actions → Variables).
           TE_AI_DAILY_LIMIT: ${{ vars.TE_AI_DAILY_LIMIT || '60' }}
           TE_PUBLIC_BASE_URL: ${{ steps.pages.outputs.base_url }}
+          # AdSense banner (Settings → Secrets and variables → Actions → Variables); off while unset.
+          TE_ADSENSE_CLIENT: ${{ vars.TE_ADSENSE_CLIENT }}
+          TE_ADSENSE_SLOT: ${{ vars.TE_ADSENSE_SLOT }}
         run: tarnow-events run
 
       - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3

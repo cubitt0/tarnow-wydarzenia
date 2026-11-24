@@ -6,15 +6,20 @@
 <title>Wydarzenia Tarnów – kalendarz koncertów, teatru, kina i imprez</title>
 <meta name="description" content="Co robić dziś i w weekend w Tarnowie i do 50 km: koncerty, teatr, stand-up, kino, wystawy, sport, imprezy dla dzieci, festiwale. Subskrypcja iCal dla Google Calendar, Apple i Outlook.">
 <meta name="keywords" content="wydarzenia Tarnów, kalendarz wydarzeń Tarnów, koncerty Tarnów, teatr Tarnów, kino Tarnów, imprezy Tarnów, co robić w Tarnowie, weekend Tarnów, Dębica, Brzesko, Dąbrowa Tarnowska, iCal">
-<link rel="canonical" href="https://cubitt0.github.io/tarnow-wydarzenia/">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%231b1b1b'/%3E%3Cpath fill='%23fff' d='M7 8h10v2a2 2 0 0 0 0 4v2H7v-2a2 2 0 0 0 0-4z'/%3E%3C/svg%3E">
+<link rel="canonical" href="https://tarnow-wydarzenia.pl/">
+<link rel="icon" href="favicon.ico" sizes="48x48">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta property="og:type" content="website">
+<meta property="og:site_name" content="Wydarzenia Tarnów">
+<meta name="twitter:card" content="summary">
 <meta property="og:locale" content="pl_PL">
 <meta property="og:title" content="Wydarzenia Tarnów – co dziś, co w weekend">
 <meta property="og:description" content="Koncerty, teatr, kino, sport i imprezy w Tarnowie i do 50 km. Jeden kalendarz z ponad 100 źródeł, aktualizowany codziennie.">
-<meta property="og:url" content="https://cubitt0.github.io/tarnow-wydarzenia/">
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"Wydarzenia Tarnów","url":"https://cubitt0.github.io/tarnow-wydarzenia/","inLanguage":"pl","description":"Kalendarz wszystkich wydarzeń w Tarnowie i w promieniu 50 km."}</script>
+<meta property="og:url" content="https://tarnow-wydarzenia.pl/">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"Wydarzenia Tarnów","url":"https://tarnow-wydarzenia.pl/","inLanguage":"pl","description":"Kalendarz wszystkich wydarzeń w Tarnowie i w promieniu 50 km."}</script>
 <meta name="theme-color" content="#faf8f5">
+<!--AD-HEAD-->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wdth,wght@8..144,25..151,100..1000&display=swap">
@@ -217,6 +222,7 @@ html{scrollbar-width:thin;scrollbar-color:color-mix(in srgb,var(--on-surface) 28
 .days::-webkit-scrollbar{display:none}
 .dchip{flex:1 1 0;max-width:96px;min-width:54px;scroll-snap-align:center;border:0;border-radius:18px;background:var(--surface-c-low);padding:8px 6px 9px;
   display:flex;flex-direction:column;align-items:center;gap:1px;color:var(--on-surface);transition:background-color .25s var(--ease),color .25s,transform .25s var(--ease)}
+.dchip:first-child{scroll-snap-align:start}
 .dchip .dw{font-size:11px;font-weight:650;letter-spacing:.6px;text-transform:uppercase;color:var(--on-surface-var)}
 .dchip .dn{font:800 24px/1 var(--font);font-stretch:80%;font-variant-numeric:tabular-nums;margin:2px 0}
 .dchip .dc{font-size:11px;color:var(--on-surface-var);font-variant-numeric:tabular-nums;line-height:14px}
@@ -455,6 +461,8 @@ dialog:focus,dialog:focus-visible,.sheet:focus{outline:none}
 .info .sub{color:var(--on-surface-var);font-size:12.5px}
 .info a{color:var(--on-surface);text-decoration-color:var(--outline);text-underline-offset:3px;font-weight:600}
 .desc{white-space:pre-line;color:var(--on-surface);line-height:1.55;margin:0 0 18px;padding:14px 16px;border-radius:16px;background:var(--surface-c)}
+.desc .more{display:flex;align-items:center;gap:4px;width:max-content;margin-top:10px;text-decoration:none;font-weight:700;color:var(--primary)}
+.desc .more .ms{font-size:16px}
 .desc a{color:var(--on-surface);text-decoration-color:var(--outline);text-underline-offset:3px;font-weight:600;overflow-wrap:anywhere}
 .srcs{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
 .srcs a{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:14px;background:var(--surface-c-lowest);text-decoration:none;color:var(--on-surface)}
@@ -623,9 +631,11 @@ dialog:focus,dialog:focus-visible,.sheet:focus{outline:none}
     </div>
   </div>
   <div class="host" id="host"></div>
+  <!--AD-SLOT-->
   <footer class="foot-page">
     <span id="gen"></span>
     <span class="kb">Skróty: <kbd>←</kbd><kbd>→</kbd> przewijanie · <kbd>t</kbd> dziś · <kbd>d</kbd><kbd>w</kbd><kbd>m</kbd> widok · <kbd>/</kbd> szukaj</span>
+    <a href="wydarzenia/">Lista wydarzeń</a>
     <a href="zrodla.html">Źródła i status</a>
   </footer>
 </main>
@@ -1048,7 +1058,9 @@ function renderStrip() {
   });
   const target = box.querySelector(".dchip.on,.dchip.inrange");
   if (target) {
-    const r = target.offsetLeft - box.clientWidth / 2 + target.offsetWidth / 2;
+    // Centre the selected day, measured inside the strip (offsetLeft would include the quick-pick box).
+    const t = target.getBoundingClientRect(), bx = box.getBoundingClientRect();
+    const r = target === box.firstElementChild ? 0 : box.scrollLeft + (t.left - bx.left) - box.clientWidth / 2 + t.width / 2;
     box.scrollTo({left: Math.max(0, r), behavior: reduced() ? "auto" : "smooth"});
   }
   // quick ranges
@@ -1214,7 +1226,7 @@ function openEvent(id, fromHash) {
         ${e.loc ? `<span class="ms">location_on</span><div>${esc(e.loc)}${map ? `<div class="sub"><a href="${map}" target="_blank" rel="noopener">Pokaż w Mapach Google</a>${osm ? ` · <a href="${osm}" target="_blank" rel="noopener">OpenStreetMap</a>` : ""}</div>` : ""}</div>` : ""}
         ${e.p ? `<span class="ms">confirmation_number</span><div>${esc(e.p)} ${priceHTML(e.p).includes("free") ? `<span class="price free" style="margin-left:6px">Bezpłatne</span>` : ""}</div>` : ""}
       </div>
-      ${e.d ? `<p class="desc">${linkify(e.d)}</p>` : ""}
+      ${e.d ? `<p class="desc">${linkify(e.d)}${e.dm ? `<a class="more" href="${esc(e.src[0][1])}" target="_blank" rel="noopener">Czytaj więcej<span class="ms">open_in_new</span></a>` : ""}</p>` : ""}
       <div class="h4">Źródła · ${e.src.length}</div>
       <div class="srcs">${e.src.map(([n, u], i) => { let hn = ""; try { hn = new URL(u).hostname.replace(/^www\./, ""); } catch {}
         return `<a href="${esc(u)}" target="_blank" rel="noopener" class="sl">${favHTML(u, n)}<div><b>${esc(n)}</b><small>${esc(hn)}</small></div>${i === 0 ? `<span class="pri">główne</span>` : ""}<span class="ms" style="color:var(--on-surface-var)">open_in_new</span></a>`; }).join("")}</div>
@@ -1222,13 +1234,20 @@ function openEvent(id, fromHash) {
     <div class="actions">
       <button class="btn sl" data-act="ics"><span class="ms">event_available</span>Dodaj do kalendarza</button>
       <button class="btn sl" data-act="copy"><span class="ms">link</span>Kopiuj link</button>
-      <a class="btn filled sl" href="${esc(e.src[0][1])}" target="_blank" rel="noopener"><span class="ms">open_in_new</span>Otwórz źródło</a>
+      <a class="btn ${e.tk ? "tonal" : "filled"} sl" href="${esc(e.src[0][1])}" target="_blank" rel="noopener"><span class="ms">open_in_new</span>Otwórz źródło</a>
+      ${e.tk && !e.x ? `<a class="btn filled sl" href="${esc(e.tk)}" target="_blank" rel="noopener"><span class="ms">confirmation_number</span>Kup bilet</a>` : ""}
     </div>`;
   sheet.dataset.id = e.id;
   sheet.scrollTop = 0;
   dlg.classList.remove("closing");
   if (!dlg.open) dlg.showModal();
   history.replaceState(null, "", "#e=" + encodeURIComponent(e.id));
+}
+// Shared links point at the event's own page (title, picture and date in link previews);
+// a local copy of the site has no such pages and keeps the #e= link.
+function eventUrl(e) {
+  return e.u && location.protocol.startsWith("http") ? new URL("/" + e.u, location.href).href
+    : location.href.split("#")[0] + "#e=" + encodeURIComponent(e.id);
 }
 function closeDlg() {
   if (!dlg.open || dlg.classList.contains("closing")) return;
@@ -1243,7 +1262,7 @@ sheet.addEventListener("click", ev => {
   const e = BY_ID.get(sheet.dataset.id);
   if (b.dataset.act === "close") closeDlg();
   else if (b.dataset.act === "ics" && e) downloadIcs(e);
-  else if (b.dataset.act === "copy" && e) copyText(location.href.split("#")[0] + "#e=" + encodeURIComponent(e.id), "Skopiowano link do wydarzenia");
+  else if (b.dataset.act === "copy" && e) copyText(eventUrl(e), "Skopiowano link do wydarzenia");
 });
 // swipe down to close the bottom sheet
 let sy = null;

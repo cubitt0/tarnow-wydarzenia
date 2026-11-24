@@ -49,6 +49,7 @@ class Event:
     lon: float | None = None
     image: str | None = None
     price: str | None = None
+    tickets: str | None = None  # where to buy tickets (a ticket shop's page for this event)
     categories: list[str] = field(default_factory=list)
     cancelled: bool = False
     # Filled by dedup: every source that reported this event, primary first.

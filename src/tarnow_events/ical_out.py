@@ -67,6 +67,8 @@ def _description(e: Event) -> str:
         parts.append(e.description[:3000])
     if e.price:
         parts.append(f"Bilety: {e.price}")
+    if e.tickets:
+        parts.append(f"Kup bilet: {e.tickets}")
     refs = e.all_sources()
     parts.append("Źródła:\n" + "\n".join(f"• {r.source_name}: {r.url}" for r in refs))
     return "\n\n".join(parts)
