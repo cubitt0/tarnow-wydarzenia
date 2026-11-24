@@ -17,6 +17,7 @@ from .geo import Geocoder, canonical_town, correct_tarnow, distance_from_tarnow,
 from .ical_out import build_calendar
 from .models import CATEGORIES, TZ, Event
 from .series import collapse_series, is_long
+from .tickets import free_ticket
 from .seo import write_seo
 from .ads import apply_ads
 from .site import render_index
@@ -145,6 +146,10 @@ def run(settings: Settings, only: set[str] | None = None, use_ai: bool = True) -
     # Pictures and ticket links from the events' own pages (cinema has posters already; skip it).
     img_stats = enrich_images([e for e in merged if e.in_main], settings.cache_dir,
                               listing_urls={c.url for c in configs})
+    # Cinema: no page reading, but a screening listed by a ticket shop (Bilety24) is its own ticket link.
+    for e in merged:
+        if not e.in_main and not e.tickets:
+            e.tickets = free_ticket(e)
 
     write_outputs(settings, merged, configs, stats)
     ai = gemini(settings)

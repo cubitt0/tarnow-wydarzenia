@@ -425,8 +425,8 @@ sources:
   - {id: biletomat, name: Biletomat – Tarnów, type: jsonld, url: "https://biletomat.pl/wydarzenia/w/tarnow", group: bilety, town: Tarnów, priority: 40}
   - id: kino-marzenie
     name: Kino Marzenie
-    type: html_ai
-    url: https://www.kinomarzenie.pl/embed/events?start_date={today}&end_date={today+7}&category_id=8&show_covers=1
+    type: kinomarzenie
+    url: https://www.kinomarzenie.pl/repertuar
     group: kino
     category: kino
     town: Tarnów

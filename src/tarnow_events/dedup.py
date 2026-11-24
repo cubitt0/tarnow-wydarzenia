@@ -20,7 +20,7 @@ from collections import defaultdict
 from rapidfuzz import fuzz
 from unidecode import unidecode
 
-from .geo import haversine_km, norm_town
+from .geo import KNOWN_TOWNS, haversine_km, norm_town
 from .models import TZ, Event, SourceRef
 
 log = logging.getLogger(__name__)
@@ -62,6 +62,8 @@ def titles_match(a: str, b: str) -> bool:
 def same_event(a: Event, b: Event) -> bool:
     if a.day != b.day:
         return False
+    if same_slot(a, b):
+        return True
     # Same URL alone proves nothing: AI-extracted events all point at their listing page.
     if not titles_match(a.title, b.title):
         return False
@@ -85,6 +87,33 @@ def same_place(a: Event, b: Event) -> bool:
         if ta and tb and ta != tb:
             return False
     return True
+
+
+# ---- one venue, one start time, differently worded titles
+# "ANDRZEJKI W RYTMIE HITÓW" and "Wielkie Andrzejki w Tarnowie", both at Arena Jaskółka at 19:00, are one
+# event: a venue rarely runs two shows at once, so a shared distinctive word is enough.
+SLOT_TOLERANCE_MIN = 15
+SLOT_PLACE_KM = 0.15
+TOWN_CENTRE_KM = 0.05
+
+
+def _at_town_centre(lat: float, lon: float) -> bool:
+    # Geocoding falls back to the town centre, which says nothing about the venue.
+    return any(haversine_km(lat, lon, *c) <= TOWN_CENTRE_KM for c in KNOWN_TOWNS.values())
+
+
+def same_slot(a: Event, b: Event) -> bool:
+    if a.all_day or b.all_day or not (a.in_main and b.in_main):
+        return False  # cinemas run several screenings at once, in different halls
+    if abs((a.start - b.start).total_seconds()) > SLOT_TOLERANCE_MIN * 60:
+        return False
+    if None in (a.lat, a.lon, b.lat, b.lon) or _at_town_centre(a.lat, a.lon) or _at_town_centre(b.lat, b.lon):
+        return False
+    if haversine_km(a.lat, a.lon, b.lat, b.lon) > SLOT_PLACE_KM:
+        return False
+    if {r.source_id for r in a.all_sources()} & {r.source_id for r in b.all_sources()}:
+        return False  # one source never lists the same event twice
+    return bool(_stems(a.title) & _stems(b.title))
 
 
 # ---- multi-day / all-day events whose sources disagree on the dates

@@ -183,8 +183,7 @@ kbd{font:500 11px/1 var(--font);padding:3px 6px;border-radius:6px;border:1px sol
   .toolbar .where button,.toolbar .seg button{flex:1;justify-content:center;padding:0 6px;font-size:13px}
   .toolbar .where button .ms{display:none}
   .when{border-radius:20px;padding:6px;margin:0 calc(-1 * var(--gutter) + 8px)}
-  .when .quick{padding-right:6px;margin-right:6px}
-  .when .qchip{height:28px;padding:0 10px 0 6px;font-size:13px}
+  .controls .when .quick{display:none}  /* phones: the day tiles alone; Dziś/Jutro/Weekend only cost width */
   .when .days{margin:0!important;padding:2px!important}
   /* phones: one swipeable row, faded right edge says "there is more" */
   .controls .cats{flex-wrap:nowrap!important;overflow-x:auto;scrollbar-width:none;margin:0 calc(-1 * var(--gutter))!important;
@@ -701,6 +700,7 @@ function prepare(list) {
   for (const e of list) {
     e.c = (e.c && e.c.length ? e.c : ["inne"]).filter(c => ICONS[c]);
     if (!e.c.length) e.c = ["inne"];
+    e.c0 = e.c.slice();   // categories as the source gave them; e.c / e.cat follow the filters (orderCats)
     e.cat = e.c[0];
     e.src = e.src && e.src.length ? e.src : [["?", "#"]];
     const s = local(new Date(e.s));
@@ -748,7 +748,15 @@ function whereOK(e) { return state.where === "all" || (state.where === "tarnow")
 // so chip counters stay independent of which chips are on.
 function baseOK(e) { return whereOK(e) && matchQ(e); }
 // The "Wystawy wielodniowe" box: everything running over a week, and exhibitions of any length.
-function inBox(e) { return e.long || (e.span && e.cat === "wystawy"); }
+function inBox(e) { return e.long || (e.span && e.c0[0] === "wystawy"); }
+// A tile shows its first category that is switched on; switched-off ones move to the end.
+function orderCats() {
+  for (const e of EVENTS) {
+    if (e.c0.length < 2) continue;
+    e.c = [...e.c0.filter(c => !state.off.has(c)), ...e.c0.filter(c => state.off.has(c))];
+    e.cat = e.c[0];
+  }
+}
 function visible(e) { return baseOK(e) && catOK(e) && !(inBox(e) && state.off.has("dlugie")); }
 function overlaps(e, a, b) { return e.sk <= b && e.ek >= a; }
 // "What's on this day" count: dated items on that day; multi-day items count on their first day only.
@@ -1112,6 +1120,7 @@ function renderChips(first) {
 
 // ================= render with transitions =================
 function render(dir = "zoom") {
+  orderCats();
   const {node, total} = state.view === "month" ? monthView() : state.view === "week" ? weekView() : dayView();
   const old = current;
   current = node;

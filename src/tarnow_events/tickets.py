@@ -24,6 +24,7 @@ TICKET_DOMAINS = (
     "ticketmaster.pl", "goingapp.pl", "biletomat.pl", "ewejsciowki.pl", "abilet.pl", "evenea.pl",
     "bilety.fm", "proticket.pl", "kicket.com", "eventbrite.com", "eventbrite.pl", "ticketos.pl",
     "biletin.pl", "tix.pl", "bilety.pl", "ticketpro.pl", "app.konfeo.com", "konfeo.com",
+    "marzenieonline.tck.pl",  # Kino Marzenie / TCK box office
 )
 # Venues' own box offices: bilety.teatr.pl, ticket.mck.pl, …
 TICKET_SUBDOMAIN = re.compile(r"^(?:bilety?|tickets?|kasa-?biletowa|e-?bilety?)\.", re.I)

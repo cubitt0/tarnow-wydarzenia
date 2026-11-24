@@ -326,6 +326,51 @@ def test_multi_day_events_from_different_sources_merge():
     assert len(out) == 3
 
 
+def test_same_venue_same_time_merges_differently_worded_titles():
+    t = T.replace(month=11, day=27)
+    arena = dict(lat=50.00907, lon=20.92941)
+    a = ev("ANDRZEJKI W RYTMIE HITÓW", t, src="biletyna", **arena)
+    b = ev("Wielkie Andrzejki w Tarnowie", t, src="tarnowskatv", **arena)
+    # Same place and time, nothing in common: two events.
+    c = ev("Wernisaż wystawy „Trigger”", t, src="muzeum", **arena)
+    # Only the town centre is known: the venue is not proven.
+    x = ev("Andrzejki w klubie", t, src="x", lat=50.0121, lon=20.9858)
+    y = ev("Andrzejkowa potańcówka", t, src="y", lat=50.0121, lon=20.9858)
+    # Cinema screenings at the same time are separate shows.
+    k1 = ev("Zwierzogród 2 (dubbing)", t, src="kino1", **arena); k1.in_main = False
+    k2 = ev("Zwierzogród 2 (napisy)", t, src="kino2", **arena); k2.in_main = False
+    out = deduplicate([a, b, c, x, y, k1, k2], {})
+    assert len(out) == 6
+    andrz = [e for e in out if {r.source_id for r in e.all_sources()} == {"biletyna", "tarnowskatv"}]
+    assert len(andrz) == 1
+
+
+def test_kino_marzenie_day_listing_has_times_and_ticket_links():
+    from selectolax.lexbor import LexborHTMLParser as HTMLParser
+    from tarnow_events.config import SourceConfig, Settings
+    from tarnow_events.sources.cinemas import KinoMarzenieSource
+    html = """
+    <div class="row item"><a href="/repertuar/1052,ebenezer"><img src="https://www.kinomarzenie.pl/p.jpeg"/></a>
+      <h4><a class="color-0" href="/repertuar/1052,ebenezer"><span class="sr-only">Zobacz więcej na temat:</span>
+        EBENEZER SCROOGE</a></h4><span class="d-block color-3 small">FANTASY | 12+ LAT</span>
+      <div class="d-flex"><div class="d-flex flex-wrap"><span>NAPISY</span></div>
+        <a class="btn" href="https://marzenieonline.tck.pl/MSI/Default.aspx?event_id=2"><span>Kup bilet</span>
+          <span><span class="sr-only">Czwartek 26-11-2026 na godzinę</span> 19:30</span></a></div>
+      <div class="d-flex"><div class="d-flex flex-wrap"><span>DUBBING</span></div>
+        <a class="btn" href="https://marzenieonline.tck.pl/MSI/Default.aspx?event_id=1"><span>Kup bilet</span>
+          <span><span class="sr-only">Czwartek 26-11-2026 na godzinę</span> 16:45</span></a></div>
+    </div>
+    <div class="row item"><h4><a href="/repertuar/1051,lalka">LALKA</a></h4></div>"""
+    cfg = SourceConfig(id="kino-marzenie", name="Kino Marzenie", type="kinomarzenie", url="https://www.kinomarzenie.pl/repertuar",
+                       town="Tarnów", options={"main_feed": False})
+    out = list(KinoMarzenieSource(cfg, Settings.from_env()).parse_day(HTMLParser(html), "2026-11-26"))
+    assert len(out) == 1  # a film without screenings that day is skipped
+    e = out[0]
+    assert e.title == "EBENEZER SCROOGE (Kino Marzenie)" and e.start.hour == 16 and e.start.minute == 45
+    assert e.tickets.endswith("event_id=1") and e.source.url == "https://www.kinomarzenie.pl/repertuar/1052,ebenezer"
+    assert e.description.startswith("Seanse: 16:45 DUBBING · 19:30 NAPISY") and not e.in_main
+
+
 def test_every_page_has_a_preview_image():
     from tarnow_events.seo import _page
     base = "https://tarnow-wydarzenia.pl"
