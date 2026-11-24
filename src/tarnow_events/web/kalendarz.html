@@ -454,6 +454,7 @@ dialog:focus,dialog:focus-visible,.sheet:focus{outline:none}
 .info .sub{color:var(--on-surface-var);font-size:12.5px}
 .info a{color:var(--on-surface);text-decoration-color:var(--outline);text-underline-offset:3px;font-weight:600}
 .desc{white-space:pre-line;color:var(--on-surface);line-height:1.55;margin:0 0 18px;padding:14px 16px;border-radius:16px;background:var(--surface-c)}
+.desc a{color:var(--on-surface);text-decoration-color:var(--outline);text-underline-offset:3px;font-weight:600;overflow-wrap:anywhere}
 .srcs{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
 .srcs a{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:14px;background:var(--surface-c-lowest);text-decoration:none;color:var(--on-surface)}
 .srcs a .fav{width:24px;height:24px;border-radius:6px}
@@ -1122,6 +1123,16 @@ function whenText(e) {
   if (e.e) s += e.multi ? ` – ${longDate(e.ek)} ${hm(local(new Date(e.e)).min)}` : (e.emin != null ? `–${hm(e.emin)}` : "");
   return s;
 }
+// Links in descriptions are often the best page about the event (Luma, Facebook, tickets).
+function linkify(text) {
+  return esc(text).replace(/https?:\/\/[^\s<>"]+/g, raw => {
+    const url = raw.replace(/[.,;:!?)»”']+$/, ""), tail = raw.slice(url.length);
+    let label = url.replace(/^https?:\/\/(www\.)?/, "");
+    if (label.length > 42) label = label.slice(0, 40) + "…";
+    return `<a href="${url}" target="_blank" rel="noopener nofollow">${label}</a>${tail}`;
+  });
+}
+
 function openEvent(id, fromHash) {
   const e = BY_ID.get(id); if (!e) { if (fromHash) toast("Nie znaleziono wydarzenia"); return; }
   lastFocus = document.activeElement;
@@ -1152,7 +1163,7 @@ function openEvent(id, fromHash) {
         ${e.loc ? `<span class="ms">location_on</span><div>${esc(e.loc)}${map ? `<div class="sub"><a href="${map}" target="_blank" rel="noopener">Pokaż w Mapach Google</a>${osm ? ` · <a href="${osm}" target="_blank" rel="noopener">OpenStreetMap</a>` : ""}</div>` : ""}</div>` : ""}
         ${e.p ? `<span class="ms">confirmation_number</span><div>${esc(e.p)} ${priceHTML(e.p).includes("free") ? `<span class="price free" style="margin-left:6px">Bezpłatne</span>` : ""}</div>` : ""}
       </div>
-      ${e.d ? `<p class="desc">${esc(e.d)}</p>` : ""}
+      ${e.d ? `<p class="desc">${linkify(e.d)}</p>` : ""}
       <div class="h4">Źródła · ${e.src.length}</div>
       <div class="srcs">${e.src.map(([n, u], i) => { let hn = ""; try { hn = new URL(u).hostname.replace(/^www\./, ""); } catch {}
         return `<a href="${esc(u)}" target="_blank" rel="noopener" class="sl">${favHTML(u, n)}<div><b>${esc(n)}</b><small>${esc(hn)}</small></div>${i === 0 ? `<span class="pri">główne</span>` : ""}<span class="ms" style="color:var(--on-surface-var)">open_in_new</span></a>`; }).join("")}</div>

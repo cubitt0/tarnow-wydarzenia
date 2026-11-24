@@ -6,7 +6,7 @@ import re
 from collections.abc import Iterable
 from datetime import date, datetime, time, timedelta
 from typing import Any
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlsplit
 
 from dateutil import parser as dtparser
 
@@ -33,8 +33,28 @@ class Source:
 
     # --- helpers shared by all adapters -------------------------------------------------
 
-    def ref(self, url: str | None) -> SourceRef:
-        return SourceRef(self.cfg.id, self.cfg.name, absolutize(url, self.cfg.url) or self.cfg.url)
+    def ref(self, url: str | None, description: str | None = None) -> SourceRef:
+        return SourceRef(self.cfg.id, self.cfg.name, self.readable_url(url, description))
+
+    def readable_url(self, url: str | None, description: str | None = None) -> str:
+        """The link people click must open a page they can read, never the feed/API we scraped.
+        Order: the event's own link, a link from its description, the configured homepage,
+        the source page itself, the site's front page."""
+        url = absolutize(url, self.cfg.url)
+        if url and not is_machine_url(url):
+            return url
+        for found in URL_RE.findall(description or ""):
+            found = found.rstrip(".,;:!?)»”'\"")
+            if not is_machine_url(found):
+                return found
+        home = self.cfg.options.get("homepage")
+        if home:
+            return home
+        if not is_machine_url(self.cfg.url):
+            return self.cfg.url
+        parts = urlsplit(self.cfg.url)
+        host = parts.netloc.removeprefix("api.")
+        return f"{parts.scheme}://{host}/"
 
     def make_event(
         self,
@@ -68,7 +88,7 @@ class Source:
             start=start_dt,
             end=end_dt,
             all_day=start_all_day if all_day is None else all_day,
-            source=self.ref(url),
+            source=self.ref(url, description),
             description=clean_text(description, keep_newlines=True),
             location_name=clean_text(location_name) or loc.get("name"),
             address=clean_text(address) or loc.get("address"),
@@ -173,3 +193,16 @@ def absolutize(url: str | None, base: str) -> str | None:
     if url.startswith(("mailto:", "tel:", "javascript:", "#")):
         return None
     return urljoin(base, url)
+
+
+URL_RE = re.compile(r"https?://[^\s<>\"']+")
+MACHINE_URL = re.compile(
+    r"\.(?:ics|xml|json|rss|atom)(?:[?#]|$)|/(?:rss|feed|atom|ical|ics|wp-json|api)(?:/|[?#]|$)"
+    r"|[?&](?:format=feed|ical=|outlook-ical|feed=)|//api\.",
+    re.I,
+)
+
+
+def is_machine_url(url: str | None) -> bool:
+    """Feeds, calendar files and APIs: useful to us, unreadable for a person."""
+    return bool(url and MACHINE_URL.search(url))

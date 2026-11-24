@@ -13,7 +13,10 @@ from ..ai import PROMPT_VERSION, gemini
 from ..htmltext import html_to_text
 from ..models import TZ
 from ..categorize import is_junk
-from .base import Source, absolutize, clean_text
+from rapidfuzz import fuzz
+
+from ..dedup import norm_title
+from .base import Source, absolutize, clean_text, is_machine_url
 
 log = logging.getLogger(__name__)
 
@@ -61,6 +64,7 @@ class RssSource(Source):
         batch_keys: list[str] = []  # batches whose cached answers cover already-seen items
         fresh: list[tuple[str, str]] = []  # (item key, text) never sent to the AI
         skipped = 0
+        articles = [(clean_text(e.get("title")) or "", e.get("link")) for e in feed.entries if e.get("link")]
         for entry in feed.entries[: int(opts.get("max_items", 40))]:
             if is_junk(entry.get("title") or ""):
                 skipped += 1
@@ -130,7 +134,7 @@ class RssSource(Source):
                 title=item.get("title"),
                 start=item.get("start"),
                 end=item.get("end"),
-                url=absolutize(item.get("url"), self.cfg.url),
+                url=self._article_url(item, articles),
                 description=item.get("description"),
                 location_name=item.get("location_name"),
                 address=item.get("address"),
@@ -140,6 +144,21 @@ class RssSource(Source):
             )
             if ev:
                 yield ev
+
+
+    def _article_url(self, item: dict, articles: list[tuple[str, str]]) -> str | None:
+        """The AI sometimes answers with the feed URL instead of the article's: find the article
+        whose headline matches the event (also repairs answers already in the cache)."""
+        url = absolutize(item.get("url"), self.cfg.url)
+        if url and url != self.cfg.url and not is_machine_url(url):
+            return url
+        want = norm_title(item.get("title") or "")
+        scored = sorted(((fuzz.token_set_ratio(want, norm_title(t)), link) for t, link in articles), reverse=True)
+        if not want or not scored or scored[0][0] < 70:
+            return url
+        if len(scored) > 1 and scored[1][0] == scored[0][0] and scored[1][1] != scored[0][1]:
+            return url  # two articles fit equally well: a wrong article is worse than the homepage
+        return scored[0][1]
 
 
 def _wp_json_feed(posts: list[dict]):

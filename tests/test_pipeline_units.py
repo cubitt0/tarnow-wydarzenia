@@ -188,3 +188,31 @@ def test_source_pin_far_from_tarnow_overrides_listing_town(tmp_path):
     cfg = SourceConfig(id="a", name="A", type="jsonld", url="https://a.pl", town="Tarnów")
     dist = locate(e, cfg, Geocoder(tmp_path, online=False), 50)
     assert 20 < dist < 35 and e.town == "Brzesko" and not is_tarnow(e)
+
+
+def test_links_point_to_readable_pages():
+    from tarnow_events.config import Settings, SourceConfig
+    from tarnow_events.sources.base import Source, is_machine_url
+    for u in ["https://api.lu.ma/ics/get?entity=calendar&id=x", "https://www.halogorlice.info/rss/articles/pl",
+              "https://x.pl/feed/", "https://x.pl/wp-json/tribe/events/v1/events", "https://x.pl/?format=feed&type=rss"]:
+        assert is_machine_url(u), u
+    for u in ["https://luma.com/enkn0pqj", "https://x.pl/feed-the-birds", "https://x.pl/plik.pdf"]:
+        assert not is_machine_url(u), u
+    luma = Source(SourceConfig(id="l", name="L", type="ics", url="https://api.lu.ma/ics/get?id=1"), Settings.from_env())
+    e = luma.make_event(title="Meetup", start="2026-11-24T17:30", url=None,
+                        description="Uzyskaj aktualne informacje na: https://luma.com/enkn0pqj\n\nAdres: Sala")
+    assert e.source.url == "https://luma.com/enkn0pqj"
+    assert luma.readable_url(None) == "https://lu.ma/"
+
+
+def test_rss_events_link_to_their_article():
+    from tarnow_events.config import Settings, SourceConfig
+    from tarnow_events.sources.rss import RssSource
+    feed = "https://www.halogorlice.info/rss/articles/pl"
+    src = RssSource(SourceConfig(id="h", name="H", type="rss", url=feed), Settings.from_env())
+    arts = [("Koncert kolęd w gorlickiej bazylice już w niedzielę", "https://h.pl/artykul/1"),
+            ("Ruch wahadłowy na ul. Sienkiewicza", "https://h.pl/artykul/2"),
+            ("Mecz Glinika", "https://h.pl/artykul/3"), ("Mecz Sokoła", "https://h.pl/artykul/4")]
+    assert src._article_url({"title": "Koncert kolęd", "url": feed}, arts) == "https://h.pl/artykul/1"
+    assert src._article_url({"title": "Mecz", "url": None}, arts) is None  # ambiguous: no guessing
+    assert src._article_url({"title": "X", "url": "https://h.pl/artykul/9"}, arts) == "https://h.pl/artykul/9"
