@@ -744,8 +744,10 @@ const state = {
 function matchQ(e) { return !state.q || e.hay.includes(state.q); }
 function catOK(e) { return e.c.some(c => !state.off.has(c)); }
 function whereOK(e) { return state.where === "all" || (state.where === "tarnow") === !!e.tw; }
-function baseOK(e) { return (e.main || !state.off.has("kino")) && whereOK(e) && matchQ(e); }
-// The "Wystawy trwające" box: everything running over a week, and exhibitions of any length.
+// Category toggles are applied only by catOK (an event shows when any of its categories is on), never here,
+// so chip counters stay independent of which chips are on.
+function baseOK(e) { return whereOK(e) && matchQ(e); }
+// The "Wystawy wielodniowe" box: everything running over a week, and exhibitions of any length.
 function inBox(e) { return e.long || (e.span && e.cat === "wystawy"); }
 function visible(e) { return baseOK(e) && catOK(e) && !(inBox(e) && state.off.has("dlugie")); }
 function overlaps(e, a, b) { return e.sk <= b && e.ek >= a; }
@@ -846,7 +848,7 @@ function spanRail(a, b) {
   return span.length ? `<div class="sec"><span class="ms">date_range</span>Trwa w tym czasie<span class="cnt">${span.length}</span><span class="line"></span></div>
     <div class="rail">${span.map((e, i) => slimHTML(e, a, b, i)).join("")}</div>` : "";
 }
-// ----- ongoing exhibitions ("Wystawy trwające"): a box of full cards below the day's programme
+// ----- ongoing exhibitions ("Wystawy wielodniowe"): a box of full cards below the day's programme
 function longsFor(a, b) {
   return EVENTS.filter(e => inBox(e) && overlaps(e, a, b) && baseOK(e) && catOK(e))
     .sort((x, y) => (x.ek < y.ek ? -1 : x.ek > y.ek ? 1 : x.t.localeCompare(y.t)));
@@ -891,7 +893,7 @@ function longBox(a, b) {
       <button class="btn tonal sl" data-act="showlong"><span class="ms">visibility</span>Pokaż wystawy</button></div>`;
   }
   const T = todayKey(), r = a <= T && T <= b ? T : a;  // count "jeszcze N dni" from today when it is in view
-  return `<div class="sec"><span class="ms">museum</span>Wystawy trwające<span class="cnt">${longs.length}</span><span class="line"></span></div>
+  return `<div class="sec"><span class="ms">museum</span>Wystawy wielodniowe<span class="cnt">${longs.length}</span><span class="line"></span></div>
     <div class="grid">${longs.map((e, i) => longCardHTML(e, r, i)).join("")}</div>`;
 }
 
@@ -916,11 +918,11 @@ function dayView() {
       const past = list.filter(isPast), next = list.filter(e => !isPast(e));
       if (past.length) {
         const pOpen = !!state.pastOpen;
-        h += `<div class="sec${pOpen ? "" : " closed"}"><span class="ms">history</span>Wcześniej dziś<span class="cnt">${past.length}</span><span class="line"></span>
+        h += `<div class="sec${pOpen ? "" : " closed"}"><span class="ms">history</span>Zakończone<span class="cnt">${past.length}</span><span class="line"></span>
           <button class="sl" data-act="togglepast" aria-expanded="${pOpen}"><span class="ms exp">expand_more</span>${pOpen ? "Zwiń" : "Pokaż"}</button></div>
           <div class="collapse${pOpen ? "" : " closed"}"><div><div class="grid" style="padding:2px 2px 8px">${past.map(e => cardHTML(e, k, 0)).join("")}</div></div></div>`;
       }
-      h += `<div class="sec"><span class="ms">schedule</span>Dziś w programie<span class="cnt">${next.length}</span><span class="line"></span></div>`;
+      h += `<div class="sec"><span class="ms">schedule</span>Zaplanowane na dziś<span class="cnt">${next.length}</span><span class="line"></span></div>`;
       if (next.length) h += `<div class="grid">${next.map(e => cardHTML(e, k, i++)).join("")}</div>`;
       else h += `<div class="hint" style="border-style:solid"><span class="ms">bedtime</span><span>Na dziś to już wszystko${past.length ? " — wyżej to, co już się odbyło" : ""}.</span><button class="btn tonal sl" data-act="tomorrow"><span class="ms">arrow_forward</span>Zobacz jutro</button></div>`;
     } else {
@@ -1092,9 +1094,9 @@ function renderChips(first) {
   const [a, b] = periodRange();
   const inP = EVENTS.filter(e => overlaps(e, a, b) && baseOK(e));
   const counts = {}; let longN = 0;
-  for (const e of inP) { if (inBox(e)) { if (catOK(e)) longN++; continue; } for (const c of e.c) counts[c] = (counts[c] || 0) + 1; }
+  for (const e of inP) { if (inBox(e)) { longN++; continue; } for (const c of e.c) counts[c] = (counts[c] || 0) + 1; }
   const list = CATS.map(c => [c, SHORT[c] || c, counts[c] || 0, c]);
-  list.push(["dlugie", "Wystawy trwające", longN, "wystawy"]);
+  list.push(["dlugie", "Wystawy wielodniowe", longN, "wystawy"]);
   if (first) {
     box.innerHTML = list.map(([c, n, , col]) => `<button class="chip sl${c === "dlugie" ? " sep" : ""}" data-c="${c}" style="${catVars(col)}" title="${esc(c === "dlugie" ? "Wystawy oraz wydarzenia trwające ponad tydzień" : CAL.categories[c] || n)}">
       <span class="ms ci" aria-hidden="true">${ICONS[c] || "event"}</span><span class="lbl">${esc(n)}</span><span class="n"></span></button>`).join("");

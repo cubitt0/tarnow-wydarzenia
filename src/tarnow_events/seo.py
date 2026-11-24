@@ -206,7 +206,7 @@ def event_page(base: str, e: Event, path: str, siblings: list[tuple[Event, str]]
         more = f"<h2>Tego samego dnia</h2><ul class=\"list\">{items}</ul>"
 
     anchor = "wystawy" if is_long(e) else s.date().isoformat()
-    body = f"""<nav class="crumbs"><a href="/">Kalendarz</a> › <a href="/wydarzenia/#{anchor}">{"Wystawy trwające" if is_long(e) else escape(long_date(s.date()))}</a></nav>
+    body = f"""<nav class="crumbs"><a href="/">Kalendarz</a> › <a href="/wydarzenia/#{anchor}">{"Wystawy wielodniowe" if is_long(e) else escape(long_date(s.date()))}</a></nav>
 <article>
 {f'<img class="hero" src="{escape(e.image)}" alt="{escape(e.title)}" referrerpolicy="no-referrer">' if e.image else ""}
 <div class="cats">{"".join(f'<span class="cat">{escape(c)}</span>' for c in cats)}</div>
