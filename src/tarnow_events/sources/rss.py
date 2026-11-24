@@ -4,6 +4,7 @@ import hashlib
 import json
 import logging
 import re
+import time
 from datetime import datetime, timedelta
 
 import feedparser
@@ -28,6 +29,9 @@ DATE_HINT = re.compile(
     r"|\bgodz\.?\s*\d|\b\d{1,2}:\d{2}\b|\b(poniedzia|wtor|[sś]rod|czwart|pi[aą]t|sobot|niedziel)\w*",
     re.I,
 )
+
+
+ARTICLE_DAYS = 45
 
 
 class RssSource(Source):
@@ -64,7 +68,7 @@ class RssSource(Source):
         batch_keys: list[str] = []  # batches whose cached answers cover already-seen items
         fresh: list[tuple[str, str]] = []  # (item key, text) never sent to the AI
         skipped = 0
-        articles = [(clean_text(e.get("title")) or "", e.get("link")) for e in feed.entries if e.get("link")]
+        articles = self._remember_articles(feed, ai.cache_dir)
         for entry in feed.entries[: int(opts.get("max_items", 40))]:
             if is_junk(entry.get("title") or ""):
                 skipped += 1
@@ -146,19 +150,46 @@ class RssSource(Source):
                 yield ev
 
 
-    def _article_url(self, item: dict, articles: list[tuple[str, str]]) -> str | None:
-        """The AI sometimes answers with the feed URL instead of the article's: find the article
-        whose headline matches the event (also repairs answers already in the cache)."""
+    def _remember_articles(self, feed, cache_dir) -> list[tuple[str, str, str, float]]:
+        """Articles (headline, link, normalised text, first seen) kept for ARTICLE_DAYS: feeds hold
+        only the newest ~30 items, but cached AI answers keep referring to older ones."""
+        path = cache_dir / f"rss-articles-{self.cfg.id}.json"
+        store: dict[str, list] = json.loads(path.read_text()) if path.exists() else {}
+        now = time.time()
+        for e in feed.entries:
+            link = e.get("link")
+            if not link:
+                continue
+            body = e.get("summary", "")
+            if e.get("content"):
+                body = e.get("content")[0].get("value", body)
+            text = norm_title(clean_text(body) or "")[:20000]
+            seen = store.get(link, [None, None, now])[2]
+            store[link] = [clean_text(e.get("title")) or "", text, seen]
+        store = {k: v for k, v in store.items() if now - v[2] < ARTICLE_DAYS * 86400}
+        path.write_text(json.dumps(store, ensure_ascii=False))
+        return [(t, link, text, seen) for link, (t, text, seen) in store.items()]
+
+    def _article_url(self, item: dict, articles: list[tuple[str, str, str, float]]) -> str | None:
+        """The AI sometimes answers with the feed URL instead of the article's (also in answers
+        already cached). Find the article: by headline, else the newest one whose text names
+        the event (weekly round-ups like "Co? Gdzie? Halo!" list many events)."""
         url = absolutize(item.get("url"), self.cfg.url)
         if url and url != self.cfg.url and not is_machine_url(url):
             return url
         want = norm_title(item.get("title") or "")
-        scored = sorted(((fuzz.token_set_ratio(want, norm_title(t)), link) for t, link in articles), reverse=True)
-        if not want or not scored or scored[0][0] < 70:
+        if not want or not articles:
             return url
-        if len(scored) > 1 and scored[1][0] == scored[0][0] and scored[1][1] != scored[0][1]:
-            return url  # two articles fit equally well: a wrong article is worse than the homepage
-        return scored[0][1]
+        scored = sorted(((fuzz.token_set_ratio(want, norm_title(t)), link) for t, link, _, _ in articles), reverse=True)
+        if scored[0][0] >= 70 and not (len(scored) > 1 and scored[1][0] == scored[0][0] and scored[1][1] != scored[0][1]):
+            return scored[0][1]
+        if len(want) >= 6:
+            mentions = [(seen, link) for _, link, text, seen in articles if want in text]
+            if not mentions and len(want) >= 12:
+                mentions = [(seen, link) for _, link, text, seen in articles if fuzz.partial_ratio(want, text) >= 92]
+            if mentions:
+                return max(mentions)[1]
+        return url
 
 
 def _wp_json_feed(posts: list[dict]):

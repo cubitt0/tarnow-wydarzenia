@@ -210,9 +210,14 @@ def test_rss_events_link_to_their_article():
     from tarnow_events.sources.rss import RssSource
     feed = "https://www.halogorlice.info/rss/articles/pl"
     src = RssSource(SourceConfig(id="h", name="H", type="rss", url=feed), Settings.from_env())
-    arts = [("Koncert kolęd w gorlickiej bazylice już w niedzielę", "https://h.pl/artykul/1"),
-            ("Ruch wahadłowy na ul. Sienkiewicza", "https://h.pl/artykul/2"),
-            ("Mecz Glinika", "https://h.pl/artykul/3"), ("Mecz Sokoła", "https://h.pl/artykul/4")]
+    arts = [(t, link, "", 0.0) for t, link in [
+        ("Koncert kolęd w gorlickiej bazylice już w niedzielę", "https://h.pl/artykul/1"),
+        ("Ruch wahadłowy na ul. Sienkiewicza", "https://h.pl/artykul/2"),
+        ("Mecz Glinika", "https://h.pl/artykul/3"), ("Mecz Sokoła", "https://h.pl/artykul/4")]]
+    arts += [("Co? Gdzie? Halo! Weekend", "https://h.pl/artykul/5", "kino wystawa pt jozef barut architekt miasta w dworze", 1.0),
+             ("Co? Gdzie? Halo! Tydzień", "https://h.pl/artykul/6", "wystawa pt jozef barut architekt miasta ostatnie dni", 2.0)]
+    # Round-up article: the newest one whose text names the event.
+    assert src._article_url({"title": "Wystawa pt. Józef Barut. Architekt miasta"}, arts) == "https://h.pl/artykul/6"
     assert src._article_url({"title": "Koncert kolęd", "url": feed}, arts) == "https://h.pl/artykul/1"
     assert src._article_url({"title": "Mecz", "url": None}, arts) is None  # ambiguous: no guessing
     assert src._article_url({"title": "X", "url": "https://h.pl/artykul/9"}, arts) == "https://h.pl/artykul/9"
