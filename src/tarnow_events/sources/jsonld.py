@@ -70,6 +70,11 @@ class JsonLdSource(Source):
             html = http.get(page).text
             yield from self._events(html, page)
             if follow:
+                # Listings often link only some events as <a>; the JSON-LD names every event's page.
+                for node in extract_jsonld_events(html):
+                    href = absolutize(node.get("url"), page) if isinstance(node.get("url"), str) else None
+                    if href and follow.search(href) and href not in detail_urls:
+                        detail_urls.append(href)
                 for a in HTMLParser(html).css("a[href]"):
                     href = absolutize(a.attributes.get("href"), page)
                     if href and follow.search(href) and href not in detail_urls:

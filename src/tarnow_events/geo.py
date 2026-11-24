@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import math
+import re
 import sqlite3
 import threading
 import time
@@ -84,6 +85,30 @@ TOWN_NAMES = {norm: name for name in (
 
 def canonical_town(town: str | None) -> str | None:
     return TOWN_NAMES.get(norm_town(town) or "", town)
+
+
+_TOWN_RX = re.compile(r"\b(" + "|".join(sorted(map(re.escape, TOWN_NAMES), key=len, reverse=True)) + r")\b")
+
+
+def town_in_text(text: str | None) -> str | None:
+    """First known town written in an address ("ul. Kopernika 18d, Brzesko" → "Brzesko").
+    Word-bounded, so street names like "ul. Dębicka" or "Krakowska" do not count."""
+    m = _TOWN_RX.search(unidecode(text or "").lower())
+    return TOWN_NAMES[m.group(1)] if m else None
+
+
+def nearest_town(lat: float, lon: float, max_km: float = 10.0) -> str | None:
+    best = min(KNOWN_TOWNS.items(), key=lambda kv: haversine_km(lat, lon, *kv[1]))
+    return TOWN_NAMES.get(best[0], best[0].title()) if haversine_km(lat, lon, *best[1]) <= max_km else None
+
+
+def correct_tarnow(town: str | None, place_text: str | None) -> str | None:
+    """Aggregators (allevents) stamp their whole city listing with "Tarnów" even for events in
+    Brzesko or Nowy Sącz. If the address names another town and not Tarnów, that town wins."""
+    if norm_town(town) != "tarnow":
+        return town
+    named = town_in_text(place_text)
+    return named if named and named != "Tarnów" else town
 
 
 def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:

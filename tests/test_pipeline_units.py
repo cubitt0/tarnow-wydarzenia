@@ -166,3 +166,25 @@ def test_logo_repeated_across_pages_is_ignored(tmp_path):
     b = ev("B", T, src="x", url="https://x.pl/e/9")
     enrich_images([a, b], tmp_path, listing_urls=set())
     assert a.image is None and b.image == "https://x.pl/poster9.jpg"
+
+
+def test_listing_town_is_corrected_from_address():
+    from tarnow_events.geo import correct_tarnow, nearest_town
+    assert correct_tarnow("Tarnów", "Klub Attenzione Brzesko ul. Kopernika 18d,Brzesko") == "Brzesko"
+    assert correct_tarnow("Tarnów", "ulica Rynek 1, 33-300 Nowy Sącz, Polska") == "Nowy Sącz"
+    assert correct_tarnow("Tarnów", "Lusławice 250, 32-840 Zakliczyn gmina") == "Lusławice"
+    # Street names derived from towns, or an address that also says Tarnów, keep Tarnów.
+    assert correct_tarnow("Tarnów", "Hala, ul. Dębicka 12") == "Tarnów"
+    assert correct_tarnow("Tarnów", "Galeria Krakowska, ul. Krakowska 5, Tarnów") == "Tarnów"
+    assert correct_tarnow("Dębica", "ul. Tarnowska 1") == "Dębica"
+    assert nearest_town(49.98908, 20.61254) == "Brzesko"
+
+
+def test_source_pin_far_from_tarnow_overrides_listing_town(tmp_path):
+    from tarnow_events.config import SourceConfig
+    from tarnow_events.geo import Geocoder
+    from tarnow_events.pipeline import is_tarnow, locate
+    e = ev("Impreza", T, town="Tarnów", lat=49.98908, lon=20.61254)
+    cfg = SourceConfig(id="a", name="A", type="jsonld", url="https://a.pl", town="Tarnów")
+    dist = locate(e, cfg, Geocoder(tmp_path, online=False), 50)
+    assert 20 < dist < 35 and e.town == "Brzesko" and not is_tarnow(e)

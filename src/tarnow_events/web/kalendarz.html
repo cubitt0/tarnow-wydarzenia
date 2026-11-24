@@ -1126,7 +1126,12 @@ function openEvent(id, fromHash) {
   const e = BY_ID.get(id); if (!e) { if (fromHash) toast("Nie znaleziono wydarzenia"); return; }
   lastFocus = document.activeElement;
   const cats = CAL.categories || {};
-  const map = e.geo ? `https://www.openstreetmap.org/?mlat=${e.geo[0]}&mlon=${e.geo[1]}#map=17/${e.geo[0]}/${e.geo[1]}`
+  // Google Maps: a venue name finds the place card (hours, directions, opens the app on phones);
+  // a bare town name is better served by our geocoded pin. OSM stays as the secondary link.
+  const venue = e.loc && e.loc.trim() !== (e.town || "").trim();
+  const gq = venue ? e.loc : e.geo ? `${e.geo[0]},${e.geo[1]}` : e.loc;
+  const map = gq ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(gq)}` : null;
+  const osm = e.geo ? `https://www.openstreetmap.org/?mlat=${e.geo[0]}&mlon=${e.geo[1]}#map=17/${e.geo[0]}/${e.geo[1]}`
     : e.loc ? `https://www.openstreetmap.org/search?query=${encodeURIComponent(e.loc)}` : null;
   const T = todayKey();
   const rel = e.sk === T ? relHTML(e) : e.sk === addDays(T, 1) ? `<span class="rel">jutro</span>` : e.sk > T ? `<span class="rel">za ${diffDays(T, e.sk)} dni</span>` : "";
@@ -1144,7 +1149,7 @@ function openEvent(id, fromHash) {
       ${rel}
       <div class="info">
         <span class="ms">schedule</span><div>${esc(whenText(e))}</div>
-        ${e.loc ? `<span class="ms">location_on</span><div>${esc(e.loc)}${map ? `<div class="sub"><a href="${map}" target="_blank" rel="noopener">Pokaż na mapie (OpenStreetMap)</a></div>` : ""}</div>` : ""}
+        ${e.loc ? `<span class="ms">location_on</span><div>${esc(e.loc)}${map ? `<div class="sub"><a href="${map}" target="_blank" rel="noopener">Pokaż w Mapach Google</a>${osm ? ` · <a href="${osm}" target="_blank" rel="noopener">OpenStreetMap</a>` : ""}</div>` : ""}</div>` : ""}
         ${e.p ? `<span class="ms">confirmation_number</span><div>${esc(e.p)} ${priceHTML(e.p).includes("free") ? `<span class="price free" style="margin-left:6px">Bezpłatne</span>` : ""}</div>` : ""}
       </div>
       ${e.d ? `<p class="desc">${esc(e.d)}</p>` : ""}

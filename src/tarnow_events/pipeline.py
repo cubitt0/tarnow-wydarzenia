@@ -13,7 +13,7 @@ from .categorize import categorize, is_junk
 from .config import Settings, SourceConfig, load_sources
 from .dedup import deduplicate
 from .images import enrich_images
-from .geo import Geocoder, canonical_town, distance_from_tarnow, norm_town
+from .geo import Geocoder, canonical_town, correct_tarnow, distance_from_tarnow, nearest_town, norm_town
 from .ical_out import build_calendar
 from .models import CATEGORIES, TZ, Event
 from .series import collapse_series, is_long
@@ -44,6 +44,12 @@ def run_source(src, stats: dict) -> list[Event]:
 def locate(ev: Event, cfg: SourceConfig, geo: Geocoder, radius_km: float) -> float | None:
     """Fill lat/lon and return distance from Tarnów, or None when the place is unknowable."""
     town_pt = geo.town(ev.town) if ev.town else None
+    if ev.lat is not None and ev.lon is not None and norm_town(ev.town) == "tarnow":
+        # The source's own pin is far outside the city: its "Tarnów" is the listing's city, not the venue's.
+        d = distance_from_tarnow(ev.lat, ev.lon)
+        if d > 2 * TARNOW_CITY_KM:
+            ev.town = nearest_town(ev.lat, ev.lon)
+            town_pt = geo.town(ev.town) if ev.town else None
     if ev.lat is None or ev.lon is None:
         pt = None
         town = ev.town or cfg.town
@@ -112,7 +118,7 @@ def run(settings: Settings, only: set[str] | None = None, use_ai: bool = True) -
         if is_junk(ev.title):
             dropped["junk"] += 1
             continue
-        ev.town = canonical_town(ev.town)
+        ev.town = correct_tarnow(canonical_town(ev.town), " ".join(p for p in (ev.location_name, ev.address) if p))
         infer_time(ev)
         if (ev.end or ev.start) < lo or ev.start > hi:
             dropped["window"] += 1
