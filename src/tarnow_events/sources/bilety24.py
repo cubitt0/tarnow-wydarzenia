@@ -59,6 +59,13 @@ class Bilety24Source(Source):
                 if last_day and (date.fromisoformat(last_day) - date.fromisoformat(day)).days > int(o.get("max_span_days", 45)):
                     continue  # standing offer (museum entry, workshops "until 2027")
                 cat = card.css_first(".kategoria")
+                # Poster sits in a CSS background; the bare ".../nf_repertoire_medium_scale" is a placeholder.
+                bg = card.css_first(".k_obrazek_promowane[style*='url(']")
+                poster = None
+                if bg:
+                    pm = re.search(r"url\(['\"]?([^'\")]+)", bg.attributes.get("style") or "")
+                    if pm and not pm.group(1).rstrip("/").endswith("nf_repertoire_medium_scale"):
+                        poster = pm.group(1)
                 cat_text = (cat.text() if cat else "") + " " + kind
                 is_film = "film" in cat_text.lower()
                 ev = self.make_event(
@@ -68,6 +75,7 @@ class Bilety24Source(Source):
                     url=href,
                     town=town,
                     price=(card.css_first(".cenainfo").text().strip() if card.css_first(".cenainfo") else None),
+                    image=poster,
                     categories=["kino"] if is_film else (detect(cat_text)[:1] or None),
                 )
                 if ev and is_film:

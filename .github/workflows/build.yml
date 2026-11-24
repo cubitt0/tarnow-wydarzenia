@@ -76,6 +76,8 @@ jobs:
       - name: Build feeds
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          # Max Gemini requests per day (Settings → Secrets and variables → Actions → Variables).
+          TE_AI_DAILY_LIMIT: ${{ vars.TE_AI_DAILY_LIMIT || '60' }}
           TE_PUBLIC_BASE_URL: ${{ steps.pages.outputs.base_url }}
         run: tarnow-events run
 

@@ -32,6 +32,7 @@ class Settings:
     gemini_api_key: str | None
     gemini_models: list[str]
     ai_max_calls: int
+    ai_daily_limit: int
     radius_km: float
     days_back: int
     days_ahead: int
@@ -50,7 +51,10 @@ class Settings:
             gemini_models=os.environ.get(
                 "GEMINI_MODELS", "gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemini-2.5-flash-lite"
             ).split(","),
-            ai_max_calls=int(os.environ.get("TE_AI_MAX_CALLS", "300")),
+            ai_max_calls=int(os.environ.get("TE_AI_MAX_CALLS", "60")),
+            # Hard cap per calendar day across all runs. Free tier for flash-lite is ~500/day;
+            # this keeps the project at a fraction of the key's quota.
+            ai_daily_limit=int(os.environ.get("TE_AI_DAILY_LIMIT", "60")),
             radius_km=float(os.environ.get("TE_RADIUS_KM", "50")),
             days_back=int(os.environ.get("TE_DAYS_BACK", "7")),
             days_ahead=int(os.environ.get("TE_DAYS_AHEAD", "365")),

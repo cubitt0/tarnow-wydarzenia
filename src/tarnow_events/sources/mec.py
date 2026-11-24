@@ -45,8 +45,19 @@ class MecSource(Source):
                     all_day=all_day,
                     url=e.get("link"),
                     description=e.get("summary"),
+                    image=_image(e),
                     location_name=e.get("mec_location"),
                     categories=detect(e.get("mec_category", ""))[:2] or None,
                 )
                 if ev:
                     yield ev
+
+
+def _image(entry) -> str | None:
+    """MEC puts the event image in media:content, and also as the first <img> of the summary."""
+    for m in entry.get("media_content") or []:
+        if m.get("url"):
+            return m["url"]
+    import re
+    m = re.search(r'<img[^>]+src="([^"]+)"', entry.get("summary") or "")
+    return m.group(1) if m else None

@@ -65,6 +65,10 @@ KNOWN_TOWNS: dict[str, tuple[float, float]] = {
     "zegocina": (49.8150, 20.3380),
     "zyrakow": (50.0880, 21.3730),
     "grybow": (49.6240, 20.9480),
+    "wola rzedzinska": (50.0330, 20.9150),
+    "nieciecza": (50.1560, 20.8490),
+    "solec-zdroj": (50.3630, 20.8880),
+    "dabrowa tarnowska": (50.1747, 20.9866),
 }
 
 
@@ -74,7 +78,7 @@ TOWN_NAMES = {norm: name for name in (
     "Wojnicz", "Żabno", "Radłów", "Pilzno", "Ropczyce", "Gorlice", "Biecz", "Szczucin", "Mielec", "Zalipie",
     "Skrzyszów", "Lisia Góra", "Wierzchosławice", "Pleśna", "Gromnik", "Nowy Wiśnicz", "Lipnica Murowana", "Czchów",
     "Bobowa", "Szczurowa", "Brzostek", "Nowy Sącz", "Jasło", "Lusławice", "Olesno", "Łużna", "Żegocina", "Żyraków",
-    "Grybów",
+    "Grybów", "Wola Rzędzińska", "Nieciecza", "Solec-Zdrój",
 ) for norm in [unidecode(name).lower()]}
 
 

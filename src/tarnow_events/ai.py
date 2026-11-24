@@ -92,6 +92,16 @@ class Gemini:
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.calls = 0
         self.cache_hits = 0
+        self.stale_reuses = 0
+        self.last_ok = True  # did the last extract_events call get a real (or cached) answer?
+        # Daily cap across all runs of the day (pushes, manual runs), persisted next to the cache.
+        self.daily_limit = settings.ai_daily_limit
+        self._usage_path = self.cache_dir / "usage.json"
+        self._pages_path = self.cache_dir / "pages.json"
+        try:
+            self._pages: dict[str, dict] = json.loads(self._pages_path.read_text())
+        except (OSError, ValueError):
+            self._pages = {}
         self._lock = threading.Lock()
         self._last_call = 0.0
         self._exhausted: set[str] = set()
@@ -99,6 +109,40 @@ class Gemini:
     @property
     def enabled(self) -> bool:
         return bool(self.key)
+
+    # ---- budget -------------------------------------------------------------------------
+
+    def _usage(self) -> dict:
+        try:
+            u = json.loads(self._usage_path.read_text())
+        except (OSError, ValueError):
+            u = {}
+        return u if u.get("date") == date.today().isoformat() else {"date": date.today().isoformat(), "calls": 0}
+
+    def calls_today(self) -> int:
+        return self._usage()["calls"]
+
+    def budget_left(self) -> bool:
+        return self.enabled and self.calls < self.max_calls and self.calls_today() < self.daily_limit
+
+    def _count_call(self) -> None:
+        u = self._usage()
+        u["calls"] += 1
+        self._usage_path.write_text(json.dumps(u))
+
+    # ---- per-page memory: what the AI last said about a page, and when -------------------
+
+    def page_state(self, page_key: str) -> dict | None:
+        return self._pages.get(page_key)
+
+    def remember_page(self, page_key: str, text_hash: str, events: list[dict]) -> None:
+        result_key = f"page-{page_key}-{text_hash}"
+        self.save(result_key, events)
+        self._pages[page_key] = {"ts": time.time(), "text": text_hash, "result": result_key}
+        self._pages_path.write_text(json.dumps(self._pages))
+
+    def save(self, key: str, events: list[dict]) -> None:
+        (self.cache_dir / f"{key}.json").write_text(json.dumps(events, ensure_ascii=False))
 
     def extract_events(
         self, *, text: str, source: str, url: str, default_location: str, key: str | None = None
@@ -113,9 +157,11 @@ class Gemini:
         cached = self.load(key)
         if cached is not None:
             self.cache_hits += 1
+            self.last_ok = True
             return cached
 
         result = self._generate(prompt)
+        self.last_ok = result is not None
         if result is None:
             return []
         events = [e for e in result.get("events", []) if e.get("public_event", True)]
@@ -126,28 +172,52 @@ class Gemini:
         path = self.cache_dir / f"{key}.json"
         return json.loads(path.read_text()) if path.exists() else None
 
-    def _generate(self, prompt: str) -> dict | None:
+    def extract_events_pdf(self, *, pdf: bytes, source: str, url: str, default_location: str) -> list[dict]:
+        """Annual event calendars published as PDF: Gemini reads the PDF directly. Cached by file hash."""
+        key = "pdf-" + PROMPT_VERSION + "-" + hashlib.sha256(pdf).hexdigest()
+        cached = self.load(key)
+        if cached is not None:
+            self.cache_hits += 1
+            return cached
+        if not self.budget_left():
+            return []
+        prompt = PROMPT.format(today=date.today().isoformat(), source=source, url=url,
+                               default_location=default_location or "brak", text="(treść w załączonym pliku PDF)")
+        import base64
+        result = self._generate(prompt, extra_parts=[{"inline_data": {"mime_type": "application/pdf",
+                                                                      "data": base64.b64encode(pdf).decode()}}])
+        if result is None:
+            return []
+        events = [e for e in result.get("events", []) if e.get("public_event", True)]
+        self.save(key, events)
+        return events
+
+    def _generate(self, prompt: str, extra_parts: list[dict] | None = None) -> dict | None:
         if not self.key:
             return None
         with self._lock:  # serialise: the free tier is ~15 requests/minute per project
-            if self.calls >= self.max_calls:
-                log.warning("AI call budget (%d) exhausted for this run", self.max_calls)
+            if not self.budget_left():
+                log.warning("AI budget exhausted (run %d/%d, today %d/%d); reusing previous answers",
+                            self.calls, self.max_calls, self.calls_today(), self.daily_limit)
                 return None
             for attempt, model in ((a, m) for m in self.models for a in range(3)):
                 if model in self._exhausted:
                     continue
+                if not self.budget_left():  # retries count too
+                    return None
                 wait = 4.5 - (time.monotonic() - self._last_call)
                 if wait > 0:
                     time.sleep(wait)
                 self._last_call = time.monotonic()
                 self.calls += 1
+                self._count_call()
                 try:
                     resp = httpx.post(
                         BASE.format(model=model),
                         # Header, not ?key=: URLs end up in exception messages and proxy logs.
                         headers={"x-goog-api-key": self.key},
                         json={
-                            "contents": [{"parts": [{"text": prompt}]}],
+                            "contents": [{"parts": [{"text": prompt}, *(extra_parts or [])]}],
                             "generationConfig": {
                                 "temperature": 0,
                                 "responseMimeType": "application/json",

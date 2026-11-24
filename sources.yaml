@@ -238,6 +238,9 @@ sources:
     url: https://allevents.in/tarnow
     group: bilety
     priority: 30
+    # The listing has dates only; event pages carry the start time.
+    follow: 'allevents\.in/tarnow/[^/?#]+/\d{6,}$'
+    max_follow: 60
 
   - id: ebilet
     name: eBilet – Tarnów i okolice
@@ -393,12 +396,12 @@ sources:
   - {id: infodebica, name: Info Dębica, type: rss, url: "https://infodebica.pl/feed/", group: media, town: Dębica, priority: 30, max_age_days: 10}
 
   # ─────────────────────────── REGION · HTML pages (AI) ───────────────────────────
-  - {id: brzesko-eventy, name: Gmina Brzesko – wydarzenia, type: html_ai, url: "https://www.brzesko.pl/eventy", group: region, town: Brzesko, priority: 60}
-  - {id: wojnicz, name: Gmina Wojnicz – wydarzenia, type: html_ai, url: "https://wojnicz.pl/wydarzenia", group: region, town: Wojnicz, priority: 60}
-  - {id: radlow, name: Gmina Radłów – wydarzenia, type: html_ai, url: "https://www.gminaradlow.pl/aktualnosci/wydarzenia", group: region, town: Radłów, priority: 60}
-  - {id: gromnik, name: Gmina Gromnik – kalendarz, type: html_ai, url: "https://www.gromnik.pl/asp/kalendarz,0,listawydarzen,,,26", group: region, town: Gromnik, priority: 60}
-  - {id: sckib-szczucin, name: SCKiB Szczucin, type: html_ai, url: "https://sckibszczucin.pl/wydarzenia", group: region, town: Szczucin, priority: 70}
-  - {id: mok-nowy-wisnicz, name: MOK Nowy Wiśnicz, type: html_ai, url: "https://moknowywisnicz.pl/mok/kalendarium-roczne", group: region, town: Nowy Wiśnicz, priority: 70}
+  - {id: brzesko-eventy, name: Gmina Brzesko – wydarzenia, type: html_ai, url: "https://www.brzesko.pl/eventy", group: region, town: Brzesko, priority: 60, refresh_hours: 48}
+  - {id: wojnicz, name: Gmina Wojnicz – wydarzenia, type: html_ai, url: "https://wojnicz.pl/wydarzenia", group: region, town: Wojnicz, priority: 60, refresh_hours: 48}
+  - {id: radlow, name: Gmina Radłów – wydarzenia, type: html_ai, url: "https://www.gminaradlow.pl/aktualnosci/wydarzenia", group: region, town: Radłów, priority: 60, refresh_hours: 48}
+  - {id: gromnik, name: Gmina Gromnik – kalendarz, type: html_ai, url: "https://www.gromnik.pl/asp/kalendarz,0,listawydarzen,,,26", group: region, town: Gromnik, priority: 60, refresh_hours: 48}
+  - {id: sckib-szczucin, name: SCKiB Szczucin, type: html_ai, url: "https://sckibszczucin.pl/wydarzenia", group: region, town: Szczucin, priority: 70, refresh_hours: 48}
+  - {id: mok-nowy-wisnicz, name: MOK Nowy Wiśnicz, type: html_ai, url: "https://moknowywisnicz.pl/mok/kalendarium-roczne", group: region, town: Nowy Wiśnicz, priority: 70, refresh_hours: 48}
   - id: mok-debica
     name: MOK Dębica
     type: html_ai
@@ -407,15 +410,117 @@ sources:
     group: region
     town: Dębica
     priority: 70
-  # MOSiR Dębica: broken TLS certificate chain (2026-11-23), re-enable when fixed
-  - {id: mosir-debica, enabled: false, name: MOSiR Dębica, type: html_ai, url: "https://www.mosir.debica.pl/kalendarz/", group: region, category: sport, town: Dębica, priority: 60}
-  - {id: penderecki, name: ECM Krzysztofa Pendereckiego (Lusławice), type: html_ai, url: "https://penderecki-center.pl/aktualnosci", group: region, category: koncerty, town: Lusławice, priority: 80}
-  - {id: ciezkowice-gov, name: Gmina Ciężkowice, type: html_ai, url: "https://samorzad.gov.pl/web/gmina-ciezkowice/wydarzenia", group: region, town: Ciężkowice, priority: 60}
-  - {id: bobowa-gov, name: Gmina Bobowa, type: html_ai, url: "https://samorzad.gov.pl/web/gmina-bobowa/wydarzenia", group: region, town: Bobowa, priority: 60}
-  - {id: luzna-gov, name: Gmina Łużna, type: html_ai, url: "https://samorzad.gov.pl/web/gmina-luzna/wydarzenia", group: region, town: Łużna, priority: 60}
-  - {id: gorlice-wydarzenia, name: UM Gorlice – wydarzenia, type: html_ai, url: "https://www.gorlice.pl/pl/235/0/wydarzenia.html", group: region, town: Gorlice, priority: 60}
-  - {id: ck-zabno, name: Centrum Kultury Żabno, type: html_ai, url: "http://ck.zabno.pl/", group: region, town: Żabno, priority: 70}
-  - {id: ryglice-turystyka, name: Turystyka w Gminie Ryglice, type: html_ai, url: "https://turystyka.ryglice.pl/wydarzenia/", group: region, town: Ryglice, priority: 60}
+  # MOSiR Dębica serves a broken certificate chain; public page, so TLS verification is skipped.
+  - {id: mosir-debica, name: MOSiR Dębica, type: html_ai, url: "https://www.mosir.debica.pl/kalendarz/", group: region, category: sport, town: Dębica, priority: 60, refresh_hours: 48, insecure_tls: true}
+  - {id: penderecki, name: ECM Krzysztofa Pendereckiego (Lusławice), type: html_ai, url: "https://penderecki-center.pl/aktualnosci", group: region, category: koncerty, town: Lusławice, priority: 80, refresh_hours: 48}
+  - {id: ciezkowice-gov, name: Gmina Ciężkowice, type: html_ai, url: "https://samorzad.gov.pl/web/gmina-ciezkowice/wydarzenia", group: region, town: Ciężkowice, priority: 60, refresh_hours: 48}
+  - {id: bobowa-gov, name: Gmina Bobowa, type: html_ai, url: "https://samorzad.gov.pl/web/gmina-bobowa/wydarzenia", group: region, town: Bobowa, priority: 60, refresh_hours: 48}
+  - {id: luzna-gov, name: Gmina Łużna, type: html_ai, url: "https://samorzad.gov.pl/web/gmina-luzna/wydarzenia", group: region, town: Łużna, priority: 60, refresh_hours: 48}
+  - {id: gorlice-wydarzenia, name: UM Gorlice – wydarzenia, type: html_ai, url: "https://www.gorlice.pl/pl/235/0/wydarzenia.html", group: region, town: Gorlice, priority: 60, refresh_hours: 48}
+  - {id: ck-zabno, name: Centrum Kultury Żabno, type: html_ai, url: "http://ck.zabno.pl/", group: region, town: Żabno, priority: 70, refresh_hours: 48}
+  - {id: ryglice-turystyka, name: Turystyka w Gminie Ryglice, type: html_ai, url: "https://turystyka.ryglice.pl/wydarzenia/", group: region, town: Ryglice, priority: 60, refresh_hours: 48}
+
+  # ─────────────────────────── ADDED 2026-11-23 (formerly "w planach") ───────────────────────────
+  # refresh_hours: how often a changed page may be re-read by Gemini (budget control).
+  - {id: biletomat, name: Biletomat – Tarnów, type: jsonld, url: "https://biletomat.pl/wydarzenia/w/tarnow", group: bilety, town: Tarnów, priority: 40}
+  - id: kino-marzenie
+    name: Kino Marzenie
+    type: html_ai
+    url: https://www.kinomarzenie.pl/embed/events?start_date={today}&end_date={today+7}&category_id=8&show_covers=1
+    group: kino
+    category: kino
+    town: Tarnów
+    location: {name: Kino Marzenie, address: "ul. Staszica 4", town: Tarnów}
+    priority: 70
+    main_feed: false
+  - {id: temi, name: TEMI – tygodnik tarnowski, type: rss, format: wp_json, url: "https://www.temi.pl/wp-json/wp/v2/posts?per_page=30", group: media, town: Tarnów, priority: 30, max_age_days: 10}
+  - {id: naszemiasto-tarnow, name: tarnow.naszemiasto.pl, type: rss, url: "https://tarnow.naszemiasto.pl/rss/artykuly/1.xml", group: media, town: Tarnów, priority: 30, max_age_days: 10}
+  - {id: bochnianin, name: Bochnianin.pl – kalendarz, type: rss, url: "https://bochnianin.pl/feed/?post_type=ajde_events", group: media, town: Bochnia, priority: 40, max_age_days: 365}
+  - {id: gorlice24, name: gorlice24.pl – wydarzenia, type: html_ai, url: "https://gorlice24.pl/pl/377_polecamy/571_wydarzenia", group: media, town: Gorlice, priority: 30, refresh_hours: 72}
+  - {id: hej-mielec, name: hej.mielec.pl – koncerty i imprezy, type: html_ai, url: "https://hej.mielec.pl/pl/14_kultura/688_koncerty-i-imprezy", group: media, town: Mielec, priority: 30, refresh_hours: 72}
+  - {id: sck-mielec, name: SCK Mielec – kalendarz, type: rss, url: "https://kultura.mielec.pl/wydarzenia.xml", group: region, town: Mielec, priority: 70, max_age_days: 365, insecure_tls: true}
+  - {id: skrzyszow-ug, name: Urząd Gminy Skrzyszów, type: rss, url: "https://skrzyszow.pl/pl/487/0/rss.html", group: region, town: Skrzyszów, priority: 50}
+  - {id: biblioteka-tuchow, name: Biblioteka Publiczna w Tuchowie, type: rss, url: "https://biblioteka.tuchow.pl/feed/", group: region, category: spotkania, town: Tuchów, priority: 70}
+  - {id: czchow-gmina, name: Gmina Czchów, type: rss, url: "https://www.czchow.pl/index.php?format=feed&type=rss", group: region, town: Czchów, priority: 50}
+  - {id: lgd-beskid-gorlicki, name: LGD Beskid Gorlicki, type: rss, url: "https://lgdbeskidgorlicki.pl/index.php?format=feed&type=rss", group: region, priority: 40}
+  - {id: brzostek-gmina, name: Gmina Brzostek, type: rss, url: "https://brzostek.pl/rss/aktualnosci_pl.xml", group: region, town: Brzostek, priority: 50}
+  - {id: lgd-liwocz, name: LGD Liwocz, type: rss, url: "https://www.lgdliwocz.pl/index.php/aktualnosci?format=feed&type=rss", group: region, priority: 40}
+  - {id: biecz-um, name: Urząd Miejski w Bieczu, type: rss, url: "https://www.biecz.pl/asp/_private/rss.xml", group: region, town: Biecz, priority: 50}
+  - {id: nowy-wisnicz-gmina, name: Miasto i Gmina Nowy Wiśnicz, type: rss, url: "https://nowywisnicz.pl/rss/aktualnosci_pl.xml", group: region, town: Nowy Wiśnicz, priority: 50}
+  - {id: powiat-gorlicki, name: Powiat Gorlicki, type: rss, url: "https://powiat.gorlice.pl/feed/", group: region, priority: 40}
+  - {id: powiat-dabrowski, name: Powiat Dąbrowski, type: html_ai, url: "https://samorzad.gov.pl/web/powiat-dabrowski/informacje-biezace", group: region, town: Dąbrowa Tarnowska, priority: 50, refresh_hours: 48}
+  - {id: powiat-brzeski, name: Starostwo Powiatowe w Brzesku, type: html_ai, url: "https://www.powiatbrzeski.pl/", group: region, town: Brzesko, priority: 40, refresh_hours: 72}
+  - {id: biblioteka-brzesko, name: Biblioteka w Brzesku, type: html_ai, url: "https://www.bibliotekabrzesko.pl/aktualnosci.html", group: region, category: spotkania, town: Brzesko, priority: 70, refresh_hours: 48}
+  - {id: debica-um, name: Urząd Miasta Dębica – aktualności, type: html_ai, url: "https://debica.pl/aktualnosci", group: region, town: Dębica, priority: 50, refresh_hours: 48}
+  - {id: szczucin-kalendarium, name: Gmina Szczucin – kalendarium, type: html_ai, url: "https://szczucin.pl/700-lat-szczucina/kalendarium", group: region, town: Szczucin, priority: 60, refresh_hours: 72}
+  - {id: osir-brzostek, name: OSiR Brzostek, type: html_ai, url: "https://osir.brzostek.pl/", group: region, category: sport, town: Brzostek, priority: 60, refresh_hours: 72}
+  - {id: muzeum-biecz, name: Muzeum Ziemi Bieckiej, type: html_ai, url: "https://muzeumbiecz.pl/pl/7904/0/aktualnosci.html", group: region, category: wystawy, town: Biecz, priority: 70, refresh_hours: 48}
+  - {id: mdk-bochnia, name: MDK Bochnia, type: html_ai, url: "https://mdk.bochnia.pl/aktualnosci/", group: region, town: Bochnia, priority: 70, refresh_hours: 48}
+  - {id: kopalnia-bochnia, name: Kopalnia Soli Bochnia, type: html_ai, url: "https://kopalnia-bochnia.pl/", group: region, town: Bochnia, priority: 60, refresh_hours: 72}
+  - {id: zegocina, name: Gmina Żegocina – kultura, type: html_ai, url: "https://zegocina.pl/kultura", group: region, town: Żegocina, priority: 50, refresh_hours: 72}
+  - {id: podkarpackie-travel, name: Podkarpackie.travel, type: html_ai, url: "https://podkarpackie.travel/aktualnosci", group: region, priority: 30, refresh_hours: 72}
+  - {id: lgd-dunajec-biala, name: LGD Dunajec-Biała, type: html_ai, url: "https://www.dunajecbiala.pl/", group: region, priority: 40, refresh_hours: 72}
+  - {id: elektronicznezapisy, name: elektronicznezapisy.pl – biegi Tarnów, type: html_ai, url: "https://elektronicznezapisy.pl/events.html?district=6&city_id=464", group: sport, category: sport, priority: 50, refresh_hours: 72}
+  - {id: spr-tarnow, name: SPR Tarnów (piłka ręczna) – terminarz, type: html_ai, url: "https://sportowefakty.wp.pl/pilka-reczna/spr-tarnow/terminarz", group: sport, category: sport, town: Tarnów, priority: 50, refresh_hours: 72, max_chars: 30000}
+  # Annual PDF calendars: one AI call per new file.
+  - {id: lipnica-kalendarz-pdf, name: GDK Lipnica Murowana – kalendarz imprez 2026, type: pdf_ai, url: "https://kulturalipnica.pl/wp-content/uploads/2026/01/KALENDARZ-IMPREZ-KULTURALNYCH-NA-2026-ROK-1.pdf", group: region, town: Lipnica Murowana, priority: 70}
+  - {id: brzostek-kalendarz-pdf, name: Wiadomości Brzosteckie – kalendarz 2026, type: pdf_ai, url: "https://www.wiadomoscibrzosteckie.pl/kalendarz/2026.pdf", group: region, town: Brzostek, priority: 50, insecure_tls: true}
+
+  # ─────────────────────────── CINEMAS via Filmweb / Helios (no AI, kino.ics only) ───────────────────────────
+  - id: filmweb
+    name: Filmweb – kina Tarnów i okolice
+    type: filmweb
+    url: https://www.filmweb.pl/showtimes/Tarn%C3%B3w
+    group: kino
+    category: kino
+    priority: 60
+    main_feed: false
+    days: 7
+    cinemas:
+      - {path: "/showtimes/Tarn%C3%B3w/Multikino-2994", name: Multikino Tarnów, town: Tarnów, lat: 50.001192, lon: 20.957393}
+      - {path: "/showtimes/Tarn%C3%B3w/Millenium-438", name: Kino Millenium (CSM), town: Tarnów, lat: 50.009833, lon: 20.92706}
+      - {path: "/showtimes/Rad%C5%82%C3%B3w/Kino+MCK-2408", name: Kino MCK Radłów, town: Radłów, lat: 50.08404, lon: 20.84833}
+      - {path: "/showtimes/Tuch%C3%B3w/Kino+Promie%C5%84-2419", name: Kino Promień Tuchów, town: Tuchów, lat: 49.89379, lon: 21.05271}
+      - {path: "/showtimes/D%C4%85browa+Tarnowska/Kino+Sok%C3%B3%C5%82-1488", name: Kino Sokół Dąbrowa Tarnowska, town: Dąbrowa Tarnowska, lat: 50.17049, lon: 20.97591}
+      - {path: "/showtimes/Brzesko/Kino+Planeta-1481", name: Kino Planeta Brzesko, town: Brzesko, lat: 49.96382, lon: 20.59662}
+      - {path: "/showtimes/D%C4%99bica/Kino+%C5%9Anie%C5%BCka-1500", name: Kino Śnieżka Dębica, town: Dębica, lat: 50.05037, lon: 21.41930}
+      - {path: "/showtimes/Biecz/Farys-2315", name: Kino Farys Biecz, town: Biecz, lat: 49.73318, lon: 21.25705}
+      - {path: "/showtimes/Bochnia/Regis-1294", name: Kino Regis Bochnia, town: Bochnia, lat: 49.97029, lon: 20.42862}
+      - {path: "/showtimes/Solec-Zdr%C3%B3j/Kino+GCK-2411", name: Kino GCK Solec-Zdrój, town: Solec-Zdrój, lat: 50.36324, lon: 20.88762}
+  - id: helios-nowy-sacz
+    name: Helios Nowy Sącz
+    type: helios
+    url: https://www.helios.pl/nowy-sacz/kino-helios
+    group: kino
+    category: kino
+    town: Nowy Sącz
+    location: {name: Helios Nowy Sącz (Galeria Trzy Korony), town: Nowy Sącz, lat: 49.6255, lon: 20.6910}
+    priority: 60
+    main_feed: false
+    cinema_id: 223cd021-5821-481a-9d04-31511fb44042
+
+  # ─────────────────────────── SPORT without feeds (no AI) ───────────────────────────
+  - id: maratonypolskie
+    name: maratonypolskie.pl – biegi w regionie
+    type: maratonypolskie
+    url: https://www.maratonypolskie.pl/mp_index.php?dzial=3&action=1&grp=13
+    group: sport
+    category: sport
+    priority: 50
+  - id: 90minut-iv-liga
+    name: 90minut.pl – IV liga małopolska (mecze u siebie)
+    type: 90minut
+    url: http://www.90minut.pl/liga/1/liga14839.html
+    group: sport
+    category: sport
+    priority: 50
+    league: IV liga
+    home_teams:
+      Unia Tarnów: Tarnów
+      Wolania Wola Rzędzińska: Wola Rzędzińska
+      Bruk-Bet Termalica II Nieciecza: Nieciecza
+      Bocheński KS: Bochnia
+      Glinik Gorlice: Gorlice
 
   # ─────────────────────────── FACEBOOK ───────────────────────────
   # Page event lists need a login, so only single event permalinks work. Links found in any

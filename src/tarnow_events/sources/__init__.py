@@ -1,7 +1,10 @@
 from .base import Source
 from .bilety24 import Bilety24Source
+from .cinemas import FilmwebSource, HeliosSource
+from .sport import MaratonyPolskieSource, NinetyMinutSource
 from .ebilet import EbiletSource
 from .multikino import MultikinoSource
+from .pdf_ai import PdfAiSource
 from .embedded_json import EmbeddedJsonSource
 from .mec import MecSource
 from .facebook import FacebookSource
@@ -15,6 +18,7 @@ REGISTRY: dict[str, type[Source]] = {
     cls.type: cls
     for cls in (
         IcsSource, RssSource, TribeSource, JsonLdSource, HtmlAiSource, FacebookSource, MecSource, EmbeddedJsonSource,
-        EbiletSource, Bilety24Source, MultikinoSource,
+        EbiletSource, Bilety24Source, MultikinoSource, PdfAiSource,
+        FilmwebSource, HeliosSource, MaratonyPolskieSource, NinetyMinutSource,
     )
 }

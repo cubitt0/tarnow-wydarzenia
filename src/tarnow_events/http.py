@@ -42,15 +42,18 @@ def client() -> httpx.Client:
 
 
 def get(
-    url: str, *, params: dict | None = None, headers: dict | None = None, retries: int = 2, bare: bool = False
+    url: str, *, params: dict | None = None, headers: dict | None = None, retries: int = 2, bare: bool = False,
+    insecure: bool = False,
 ) -> httpx.Response:
-    """bare=True sends only a User-Agent: some JSON APIs (Multikino) reject the full browser set."""
+    """bare=True sends only a User-Agent: some JSON APIs (Multikino) reject the full browser set.
+    insecure=True skips TLS verification, for public pages of sites with a broken certificate chain."""
     last: Exception | None = None
     for attempt in range(retries + 1):
         try:
-            if bare:
-                resp = httpx.get(url, params=params, follow_redirects=True, timeout=30,
-                                 headers={"User-Agent": BROWSER_HEADERS["User-Agent"], **(headers or {})})
+            if bare or insecure:
+                base = {"User-Agent": BROWSER_HEADERS["User-Agent"]} if bare else dict(BROWSER_HEADERS)
+                resp = httpx.get(url, params=params, follow_redirects=True, timeout=30, verify=not insecure,
+                                 headers={**base, **(headers or {})})
             else:
                 resp = client().get(url, params=params, headers=headers)
             if resp.status_code in (429, 502, 503, 504) and attempt < retries:

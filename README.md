@@ -2,7 +2,7 @@
 
 **Wszystkie wydarzenia w Tarnowie i w promieniu 50 km w jednym kalendarzu**: koncerty, spektakle,
 kabarety i stand-upy, kino, wystawy, mecze, imprezy dla dzieci, festiwale, jarmarki, spotkania
-i warsztaty. Kalendarz zbiera wydarzenia z ponad 80 źródeł, usuwa duplikaty i aktualizuje się
+i warsztaty. Kalendarz zbiera wydarzenia z ponad 120 źródeł, usuwa duplikaty i aktualizuje się
 sam codziennie o 12:00. Możesz go oglądać w przeglądarce albo zasubskrybować w Google Calendar,
 Apple Calendar lub Outlooku.
 
@@ -11,6 +11,10 @@ Apple Calendar lub Outlooku.
 [![Dodaj do Google Calendar](https://img.shields.io/badge/Google_Calendar-dodaj-4285F4?style=for-the-badge&logo=googlecalendar&logoColor=white)](https://calendar.google.com/calendar/r?cid=webcal%3A%2F%2Fcubitt0.github.io%2Ftarnow-wydarzenia%2Fwszystkie.ics)
 
 🔗 **Kalendarz online:** https://cubitt0.github.io/tarnow-wydarzenia/
+
+Na stronie: widok dnia z kartami wydarzeń, tydzień i miesiąc, przełącznik **Tarnów + 50 km / Tarnów / Okolice**,
+filtry kategorii, szybkie „Dziś / Jutro / Weekend”, wyszukiwarka, tryb ciemny i szczegóły wydarzenia
+z linkami do wszystkich źródeł oraz przyciskiem „Dodaj do kalendarza”.
 
 ---
 
@@ -34,7 +38,7 @@ same: nie trzeba niczego pobierać ponownie.
 |---|---|---|
 | 🎵 **Koncerty i muzyka** | [![iCal](https://img.shields.io/badge/iCal-koncerty.ics-b3261e?style=flat-square)](https://cubitt0.github.io/tarnow-wydarzenia/kategoria/koncerty.ics) | [![Google](https://img.shields.io/badge/Google-dodaj-4285F4?style=flat-square&logo=googlecalendar&logoColor=white)](https://calendar.google.com/calendar/r?cid=webcal%3A%2F%2Fcubitt0.github.io%2Ftarnow-wydarzenia%2Fkategoria%2Fkoncerty.ics) |
 | 🎭 **Teatr, kabaret, stand-up** | [![iCal](https://img.shields.io/badge/iCal-teatr.ics-7d5260?style=flat-square)](https://cubitt0.github.io/tarnow-wydarzenia/kategoria/teatr.ics) | [![Google](https://img.shields.io/badge/Google-dodaj-4285F4?style=flat-square&logo=googlecalendar&logoColor=white)](https://calendar.google.com/calendar/r?cid=webcal%3A%2F%2Fcubitt0.github.io%2Ftarnow-wydarzenia%2Fkategoria%2Fteatr.ics) |
-| 🎬 **Kino i film** (repertuar kin) | [![iCal](https://img.shields.io/badge/iCal-kino.ics-8b5000?style=flat-square)](https://cubitt0.github.io/tarnow-wydarzenia/kategoria/kino.ics) | [![Google](https://img.shields.io/badge/Google-dodaj-4285F4?style=flat-square&logo=googlecalendar&logoColor=white)](https://calendar.google.com/calendar/r?cid=webcal%3A%2F%2Fcubitt0.github.io%2Ftarnow-wydarzenia%2Fkategoria%2Fkino.ics) |
+| 🎬 **Kino i film** (repertuar 12 kin: Multikino, Millenium, Marzenie, Dębica, Brzesko, Dąbrowa, Tuchów, Radłów, Bochnia, Biecz, Nowy Sącz…) | [![iCal](https://img.shields.io/badge/iCal-kino.ics-8b5000?style=flat-square)](https://cubitt0.github.io/tarnow-wydarzenia/kategoria/kino.ics) | [![Google](https://img.shields.io/badge/Google-dodaj-4285F4?style=flat-square&logo=googlecalendar&logoColor=white)](https://calendar.google.com/calendar/r?cid=webcal%3A%2F%2Fcubitt0.github.io%2Ftarnow-wydarzenia%2Fkategoria%2Fkino.ics) |
 | ⚽ **Sport i rekreacja** | [![iCal](https://img.shields.io/badge/iCal-sport.ics-1f7a4d?style=flat-square)](https://cubitt0.github.io/tarnow-wydarzenia/kategoria/sport.ics) | [![Google](https://img.shields.io/badge/Google-dodaj-4285F4?style=flat-square&logo=googlecalendar&logoColor=white)](https://calendar.google.com/calendar/r?cid=webcal%3A%2F%2Fcubitt0.github.io%2Ftarnow-wydarzenia%2Fkategoria%2Fsport.ics) |
 | 🖼️ **Wystawy i muzea** | [![iCal](https://img.shields.io/badge/iCal-wystawy.ics-735c00?style=flat-square)](https://cubitt0.github.io/tarnow-wydarzenia/kategoria/wystawy.ics) | [![Google](https://img.shields.io/badge/Google-dodaj-4285F4?style=flat-square&logo=googlecalendar&logoColor=white)](https://calendar.google.com/calendar/r?cid=webcal%3A%2F%2Fcubitt0.github.io%2Ftarnow-wydarzenia%2Fkategoria%2Fwystawy.ics) |
 | 🧸 **Dzieci i rodzina** | [![iCal](https://img.shields.io/badge/iCal-dzieci.ics-006a6a?style=flat-square)](https://cubitt0.github.io/tarnow-wydarzenia/kategoria/dzieci.ics) | [![Google](https://img.shields.io/badge/Google-dodaj-4285F4?style=flat-square&logo=googlecalendar&logoColor=white)](https://calendar.google.com/calendar/r?cid=webcal%3A%2F%2Fcubitt0.github.io%2Ftarnow-wydarzenia%2Fkategoria%2Fdzieci.ics) |
@@ -55,7 +59,7 @@ same: nie trzeba niczego pobierać ponownie.
 
 ## Skąd są wydarzenia
 
-Kalendarz łączy ponad 80 źródeł. Pełny katalog 200 sprawdzonych źródeł jest w
+Kalendarz łączy ponad 120 źródeł. Pełny katalog 200 sprawdzonych źródeł jest w
 [docs/SOURCES.md](docs/SOURCES.md) oraz na stronie
 [katalog źródeł](https://cubitt0.github.io/tarnow-wydarzenia/katalog-zrodel.html). Stan każdego źródła
 po ostatniej aktualizacji: [źródła i status](https://cubitt0.github.io/tarnow-wydarzenia/zrodla.html).
@@ -120,8 +124,11 @@ sources.yaml ─► adaptery ─► normalizacja ─► geokodowanie + filtr 50 
 | `jsonld` | strony z danymi schema.org `Event` (bilety, nowoczesne CMS-y) | nie |
 | `embedded_json` | harmonogram zapisany w JSON w kodzie strony (np. Teatr Solskiego) | nie |
 | `ebilet`, `bilety24` | serwisy biletowe | nie |
+| `filmweb`, `helios` | repertuar kin (jedno wydarzenie na film i dzień) | nie |
+| `maratonypolskie`, `90minut` | biegi i mecze ligowe | nie |
 | `html_ai` | dowolna strona HTML z listą wydarzeń | tak |
-| `rss` | kanały RSS z zapowiedziami | tak |
+| `rss` | kanały RSS z zapowiedziami (też WordPress `wp-json`) | tak |
+| `pdf_ai` | roczne kalendarze imprez w PDF | tak (1× na plik) |
 | `facebook` | publiczne wydarzenia z Facebooka (pojedyncze linki) | nie |
 
 - **Duplikaty:** ten sam dzień + podobny tytuł + start ±60 min + ta sama miejscowość = jedno wydarzenie.
@@ -131,8 +138,18 @@ sources.yaml ─► adaptery ─► normalizacja ─► geokodowanie + filtr 50 
 - **Stabilne UID:** gdy wydarzenie dostaje nowe źródło, aplikacja kalendarza aktualizuje je zamiast dodawać drugi raz.
 
 **Infrastruktura (0 zł):** GitHub Actions uruchamia pobieranie codziennie o 12:00, GitHub Pages serwuje pliki `.ics`
-i stronę z kalendarzem. Tekst ze stron bez danych strukturalnych czyta Gemini flash-lite w darmowym limicie;
-odpowiedzi są zapisywane w cache, więc AI widzi tylko nowe treści.
+i stronę z kalendarzem.
+
+**Zużycie Gemini (oszczędnie z kluczem):**
+
+- Twardy limit **60 zapytań dziennie** (zmienna `TE_AI_DAILY_LIMIT`; w GitHub: *Settings → Secrets and variables →
+  Actions → Variables*). Licznik jest zapisywany w cache, więc obejmuje wszystkie uruchomienia danego dnia.
+- Źródła z AI idą po kolei według priorytetu: gdy limit się kończy, czekają portale informacyjne, nie teatr.
+- Strona HTML trafia do AI tylko, gdy jej treść się zmieniła i minęło `refresh_hours` (20 h domyślnie, 48–72 h
+  dla gmin i mediów). W przeciwnym razie używana jest poprzednia odpowiedź, więc nic nie znika z kalendarza.
+- RSS: do AI trafiają tylko nowe artykuły, które zawierają datę lub godzinę i nie są „śmieciami”
+  (wypadki, promocje, sesje rad). Do 40 tys. znaków w jednym zapytaniu.
+- Roczne kalendarze PDF: jedno zapytanie na nowy plik.
 
 ## Uruchomienie lokalne (Docker)
 

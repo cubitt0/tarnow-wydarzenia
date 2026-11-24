@@ -85,6 +85,8 @@ def test_facebook_parser():
 def test_collapse_daily_exhibition_but_not_weekly_class():
     from tarnow_events.series import collapse_series, is_long
     daily = [ev("Wystawa X", T + timedelta(days=d), src="muzeum") for d in (0, 1, 2, 4, 5, 6, 7, 8, 9)]
+    for e in daily:
+        e.categories = ["wystawy"]
     weekly = [ev("Joga", T + timedelta(days=7 * w), src="muzeum") for w in range(4)]
     out = collapse_series(daily + weekly)
     exh = [e for e in out if e.title == "Wystawa X"]
@@ -103,3 +105,64 @@ def test_junk_filter_and_town_names():
     assert canonical_town("Tarnow") == "Tarnów" and canonical_town("Kraków") == "Kraków"
     assert detect("Tribute to Pink Floyd")[0] == "koncerty"
     assert detect("Lotto SuperLiga: Handball Stal Mielec")[0] == "sport"
+
+
+def test_rss_prefilter_needs_a_date():
+    from tarnow_events.sources.rss import DATE_HINT
+    assert DATE_HINT.search("Koncert odbędzie się 12 grudnia o godz. 18")
+    assert DATE_HINT.search("Zapraszamy w sobotę 05.12")
+    assert not DATE_HINT.search("Radni przyjęli budżet gminy na przyszły rok")
+
+
+def test_daily_ai_budget_is_enforced(tmp_path):
+    from tarnow_events.ai import Gemini
+    from tarnow_events.config import Settings
+    s = Settings.from_env()
+    s.cache_dir, s.gemini_api_key, s.ai_daily_limit, s.ai_max_calls = tmp_path, "test-key", 2, 100
+    g = Gemini(s)
+    assert g.budget_left()
+    g._count_call(); g._count_call()
+    assert not g.budget_left()
+    assert Gemini(s).calls_today() == 2  # persisted across runs of the same day
+    assert g._generate("x") is None  # refuses without making a request
+
+
+def test_consecutive_performances_are_not_collapsed():
+    from tarnow_events.series import collapse_series
+    shows = []
+    for d, h in ((0, 18), (1, 17), (2, 17)):
+        e = ev("Azoty Fiction", T.replace(hour=h) + timedelta(days=d), src="teatr")
+        e.end, e.categories = e.start + timedelta(hours=3), ["teatr"]
+        shows.append(e)
+    out = collapse_series(shows)
+    assert len(out) == 3 and not any(e.all_day for e in out)
+
+
+def test_time_is_read_from_description():
+    from tarnow_events.timeinfer import infer_time
+    a = ev("Koncert", T.replace(hour=0), all_day=True); a.description = "Zapraszamy, godz. 18:30, wstęp wolny"
+    assert infer_time(a) and a.start.hour == 18 and a.start.minute == 30 and not a.all_day
+    b = ev("Spektakl", T.replace(hour=0), all_day=True); b.description = "27 listopada 18:00-21:00"
+    assert infer_time(b) and b.start.hour == 18 and b.end.hour == 21
+    c = ev("Warsztaty", T.replace(hour=0), all_day=True); c.description = "Grupa I 10:00, grupa II 12:00"
+    assert not infer_time(c) and c.all_day  # ambiguous: stays all-day
+
+
+def test_page_image_prefers_og_image():
+    from tarnow_events.images import page_image
+    html = '<html><head><meta property="og:image" content="/img/plakat.jpg"></head></html>'
+    assert page_image(html, "https://x.pl/wydarzenie/1") == "https://x.pl/img/plakat.jpg"
+    assert page_image("<html></html>", "https://x.pl/") is None
+
+
+def test_logo_repeated_across_pages_is_ignored(tmp_path):
+    import json, time
+    from tarnow_events.images import enrich_images
+    now = time.time()
+    cache = {f"https://x.pl/e/{i}": ["https://x.pl/logo.png", now] for i in range(3)}
+    cache["https://x.pl/e/9"] = ["https://x.pl/poster9.jpg", now]
+    (tmp_path / "images.json").write_text(json.dumps(cache))
+    a = ev("A", T, src="x", url="https://x.pl/e/1")
+    b = ev("B", T, src="x", url="https://x.pl/e/9")
+    enrich_images([a, b], tmp_path, listing_urls=set())
+    assert a.image is None and b.image == "https://x.pl/poster9.jpg"

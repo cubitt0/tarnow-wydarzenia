@@ -1,0 +1,163 @@
+<title>Tarnów Event Sources</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: one reading column; summary → how it works → filter bar → grouped source lists. Palette from the Leliwa arms: blue field, gold star. */
+:root{
+  --bg:#f6f7fb; --panel:#ffffff; --fg:#141a2b; --mut:#5b6378; --line:#dfe3ee;
+  --blue:#1d3f8f; --gold:#b98a12; --chip:#eef1f8;
+  --ok:#1f7a4d; --ok-bg:#e4f3eb; --plan:#8a5a00; --plan-bg:#fbf0d9; --fb:#4255a8; --fb-bg:#e6e9f7; --no:#8b2f2f; --no-bg:#f6e3e3;
+  --display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;
+  --body:Inter,ui-sans-serif,system-ui,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0e1220; --panel:#151a2b; --fg:#e7eaf3; --mut:#9aa3ba; --line:#262d44;
+  --blue:#8fb0ff; --gold:#e2b84a; --chip:#1d2338;
+  --ok:#6fd3a0; --ok-bg:#163327; --plan:#f0c46a; --plan-bg:#352a12; --fb:#a9b6ff; --fb-bg:#1f2546; --no:#f19a9a; --no-bg:#3a1c1f; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e1220; --panel:#151a2b; --fg:#e7eaf3; --mut:#9aa3ba; --line:#262d44;
+  --blue:#8fb0ff; --gold:#e2b84a; --chip:#1d2338;
+  --ok:#6fd3a0; --ok-bg:#163327; --plan:#f0c46a; --plan-bg:#352a12; --fb:#a9b6ff; --fb-bg:#1f2546; --no:#f19a9a; --no-bg:#3a1c1f; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font:15px/1.55 var(--body);margin:0}
+.wrap{max-width:1000px;margin:0 auto;padding-block:28px 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:28px}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;line-height:1.15}
+h1{font-size:clamp(28px,5vw,42px);font-weight:800;letter-spacing:-.01em}
+h2{font-size:22px;font-weight:700}
+h3{font-size:17px;font-weight:600}
+a{color:var(--blue);text-underline-offset:2px}
+.eyebrow{font:500 12px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--gold)}
+.lede{color:var(--mut);max-width:68ch;margin:10px 0 0}
+.stats{display:flex;flex-wrap:wrap;gap:10px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 14px;min-width:120px}
+.stat b{display:block;font:700 24px/1.1 var(--display);font-variant-numeric:tabular-nums}
+.stat span{font-size:12.5px;color:var(--mut)}
+.how{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px 20px;display:grid;gap:12px}
+.how dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 18px;margin:0}
+.how dt{font:500 12.5px/1.6 var(--mono);color:var(--mut)}
+.how dd{margin:0;min-width:0}
+@media (max-width:560px){.how dl{grid-template-columns:1fr}.how dt{margin-top:6px}}
+.bar{display:grid;gap:10px;position:sticky;top:env(safe-area-inset-top,0px);background:var(--bg);padding-block:10px;z-index:5;border-bottom:1px solid var(--line)}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+.row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+input[type=search]{width:100%;font:inherit;padding:9px 12px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--fg)}
+.chipbtn{font:500 13px/1 var(--body);padding:7px 11px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--fg);cursor:pointer}
+.chipbtn[aria-pressed="true"]{background:var(--blue);border-color:var(--blue);color:var(--bg)}
+.chipbtn:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.group{display:grid;gap:8px}
+.ghead{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.ghead small{color:var(--mut);font-variant-numeric:tabular-nums}
+.gdesc{color:var(--mut);font-size:13.5px;margin:0;max-width:72ch}
+ul.src{list-style:none;margin:0;padding:0;background:var(--panel);border:1px solid var(--line);border-radius:12px}
+ul.src li{display:grid;grid-template-columns:1fr auto;gap:4px 14px;padding:11px 14px;border-top:1px solid var(--line)}
+ul.src li:first-child{border-top:0}
+.nm{font-weight:600;min-width:0;overflow-wrap:anywhere}
+.meta{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px 12px;font-size:12.5px;color:var(--mut);min-width:0}
+.meta a{overflow-wrap:anywhere}
+.note{grid-column:1/-1;font-size:13px;color:var(--mut);margin:0;overflow-wrap:anywhere}
+.pill{font:500 11.5px/1 var(--mono);padding:5px 8px;border-radius:6px;white-space:nowrap;align-self:start}
+.s-aktywne{background:var(--ok-bg);color:var(--ok)}
+.s-planowane{background:var(--plan-bg);color:var(--plan)}
+.s-fb{background:var(--fb-bg);color:var(--fb)}
+.s-odrzucone{background:var(--no-bg);color:var(--no)}
+.ft{font:500 11.5px/1 var(--mono);background:var(--chip);padding:4px 6px;border-radius:5px;color:var(--fg)}
+.empty{color:var(--mut);padding:20px 0}
+@media (prefers-reduced-motion:no-preference){.chipbtn{transition:background .15s,color .15s}}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Tarnów + 50 km · katalog źródeł · __DATE__</div>
+    <h1>Skąd brać wydarzenia z Tarnowa i okolic</h1>
+    <p class="lede">Wszystkie znalezione źródła wydarzeń: instytucje miejskie, kultura, lokale, bilety, media, sport, parafie i 30 gmin w promieniu 50 km. Każde sprawdzone pod kątem iCal, API, RSS, JSON-LD albo samego HTML. Projekt łączy je w jeden kalendarz iCal bez duplikatów, z linkiem do każdego źródła.</p>
+  </header>
+
+  <section class="stats" id="stats" aria-label="Podsumowanie"></section>
+
+  <section class="how">
+    <h2>Jak to działa</h2>
+    <dl>
+      <dt>Pobieranie</dt><dd>Python, codziennie o 12:00 przez GitHub Actions. Lokalnie: <code>docker compose up</code>.</dd>
+      <dt>Bez AI</dt><dd>iCal, WordPress The Events Calendar (<code>/wp-json/tribe/…</code>), Modern Events Calendar (RSS z <code>mec:startDate</code>), schema.org JSON-LD, JSON osadzony w stronie.</dd>
+      <dt>Z AI</dt><dd>Strony HTML, RSS z ogłoszeniami i roczne kalendarze PDF → Gemini flash-lite. Twardy limit 60 zapytań dziennie; strony czytane ponownie tylko po zmianie i nie częściej niż co 20–72 h, artykuły bez daty i „śmieci” odpadają przed AI.</dd>
+      <dt>Lokalizacja</dt><dd>Współrzędne ze źródła albo OpenStreetMap Nominatim (cache). Wszystko dalej niż 50 km od Rynku odpada.</dd>
+      <dt>Duplikaty</dt><dd>Ten sam dzień + podobny tytuł + start ±60 min + ta sama miejscowość = jedno wydarzenie. Główne źródło wg priorytetu (organizator &gt; lokal &gt; miasto &gt; bilety &gt; media), reszta w opisie jako „Źródła”. Wystawy dzień po dniu sklejane w jedno wydarzenie.</dd>
+      <dt>Facebook</dt><dd>Lista wydarzeń strony wymaga logowania, więc działa tylko pojedynczy publiczny link wydarzenia. Linki fb.com/events znalezione w innych źródłach są pobierane automatycznie.</dd>
+      <dt>Hosting</dt><dd>GitHub Pages, 0 zł. Kalendarze: <code>wszystkie.ics</code>, <code>tarnow.ics</code>, <code>okolice.ics</code>, <code>dlugie.ics</code> (wystawy), <code>kategoria/*.ics</code>.</dd>
+    </dl>
+  </section>
+
+  <section class="bar" aria-label="Filtry">
+    <label for="q" class="eyebrow">Szukaj</label>
+    <input type="search" id="q" placeholder="nazwa, miejscowość, typ (np. rss, Dębica, kino)">
+    <div class="row" id="statusChips" role="group" aria-label="Status"></div>
+  </section>
+
+  <main id="groups"></main>
+</div>
+
+<script>
+const DATA = __DATA__;
+const GROUPS = [
+  ["miasto","Miasto i informacja turystyczna","Kalendarze miejskie. it.tarnow.pl i kultura.tarnow.pl zbierają wydarzenia od ok. 300 organizatorów, więc są kręgosłupem całości."],
+  ["kultura","Kultura: teatr, muzea, galerie, biblioteka","Instytucje, które same organizują wydarzenia. Najwyższy priorytet przy scalaniu duplikatów."],
+  ["kino","Kina","Repertuar trafia tylko do kalendarza kino.ics, żeby nie zasłaniał innych wydarzeń."],
+  ["lokale","Lokale: kluby, puby, restauracje, hotele","Większość działa tylko na Facebooku. Te z kalendarzem miejskim lub RSS są już pobierane."],
+  ["bilety","Bilety i agregatory","Biletyna, eBilet, Bilety24, KupBilecik, allevents. Łapią koncerty i stand-upy, których nie ma w kalendarzu miasta."],
+  ["media","Media lokalne","RSS z artykułami. AI wyciąga z nich zapowiedzi z konkretną datą."],
+  ["sport","Sport i bieganie","Kalendarz sportowy UM, TOSiR, ligi, biegi."],
+  ["religia","Religia i muzyka sakralna","Diecezja, parafie, koncerty organowe, Radio RDN."],
+  ["edukacja","Edukacja, NGO, meetupy","Uczelnia, Pałac Młodzieży, Tarnow Tech Community, stowarzyszenia."],
+  ["region","Region do 50 km","Gminy, domy kultury, OSiR-y i biblioteki: Dębica, Brzesko, Dąbrowa Tarn., Tuchów, Gorlice, Mielec, Bochnia i inne."],
+];
+const STATUS = [
+  ["aktywne","Pobierane","s-aktywne"],
+  ["planowane","W planach","s-planowane"],
+  ["tylko FB/IG","Tylko FB/IG","s-fb"],
+  ["odrzucone","Odrzucone","s-odrzucone"],
+];
+const stCls = Object.fromEntries(STATUS.map(s=>[s[0],s[2]]));
+const stLbl = Object.fromEntries(STATUS.map(s=>[s[0],s[1]]));
+const active = new Set(STATUS.map(s=>s[0]));
+const esc = s => String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const short = u => { try { const x=new URL(u); return (x.host.replace(/^www\./,"")+x.pathname).replace(/\/$/,"").slice(0,60); } catch { return u; } };
+
+function stats(){
+  const c = s => DATA.filter(r=>r.s===s).length;
+  const towns = new Set(DATA.filter(r=>r.g==="region").map(r=>r.t)).size;
+  const items = [[DATA.length,"źródeł łącznie"],[c("aktywne"),"pobieranych"],[c("planowane"),"w planach"],[c("tylko FB/IG"),"tylko Facebook/IG"],[towns,"miejscowości w regionie"]];
+  document.getElementById("stats").innerHTML = items.map(([n,l])=>`<div class="stat"><b>${n}</b><span>${l}</span></div>`).join("");
+}
+function chips(){
+  const el = document.getElementById("statusChips");
+  el.innerHTML = STATUS.map(([k,l])=>`<button class="chipbtn" id="st-${k.replace(/\W/g,'')}" data-k="${esc(k)}" aria-pressed="true">${l} · ${DATA.filter(r=>r.s===k).length}</button>`).join("");
+  el.addEventListener("click",e=>{
+    const b=e.target.closest("button"); if(!b) return;
+    const k=b.dataset.k; active.has(k)?active.delete(k):active.add(k);
+    b.setAttribute("aria-pressed",active.has(k)); render();
+  });
+}
+function render(){
+  const q = document.getElementById("q").value.trim().toLowerCase();
+  const match = r => active.has(r.s) && (!q || [r.n,r.t,r.f,r.u,r.o,r.s].join(" ").toLowerCase().includes(q));
+  let html = "";
+  for (const [g,label,desc] of GROUPS){
+    const rows = DATA.filter(r=>r.g===g && match(r)).sort((a,b)=>
+      STATUS.findIndex(s=>s[0]===a.s)-STATUS.findIndex(s=>s[0]===b.s) || (a.d??0)-(b.d??0) || a.n.localeCompare(b.n,"pl"));
+    if(!rows.length) continue;
+    html += `<section class="group"><div class="ghead"><h3>${label}</h3><small>${rows.length}</small></div><p class="gdesc">${desc}</p><ul class="src">` +
+      rows.map(r=>`<li><span class="nm"><a href="${esc(r.u)}" target="_blank" rel="noopener">${esc(r.n)}</a></span>
+        <span class="pill ${stCls[r.s]}">${stLbl[r.s]}</span>
+        <span class="meta"><span class="ft">${esc(r.f)}</span>${r.t?`<span>${esc(r.t)}${r.d?` · ${r.d} km`:""}</span>`:""}
+        ${r.fu?`<a href="${esc(r.fu)}" target="_blank" rel="noopener">feed: ${esc(short(r.fu))}</a>`:""}
+        ${r.fb?`<a href="${esc(r.fb)}" target="_blank" rel="noopener">Facebook</a>`:""}
+        ${r.ids?`<span>id: ${esc(r.ids.join(", "))}</span>`:""}</span>
+        ${r.o?`<p class="note">${esc(r.o)}</p>`:""}</li>`).join("") + `</ul></section>`;
+  }
+  document.getElementById("groups").innerHTML = html || `<p class="empty">Nic nie pasuje do filtra.</p>`;
+}
+stats(); chips(); render();
+document.getElementById("q").addEventListener("input",render);
+</script>
