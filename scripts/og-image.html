@@ -9,19 +9,13 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,400,1,0&icon_names=calendar_add_on,child_care,festival,forum,movie,music_note,nightlife,palette,sports_soccer,theater_comedy,today&display=block">
 <style>
 :root{
-  /* warm, aged-paper palette */
-  --paper:#f1e4c4; --paper-2:#e8d4a6; --on:#3a2614; --mut:#6e5435;
-  --rust:#a3431c; --sienna:#7a3b1d; --ochre:#b07a12; --olive:#6b6a1f; --umber:#5c3d24; --plum:#6e3a3a;
+  /* the calendar page's own palette */
+  --surface:#faf8f5; --on:#1c1b1a; --mut:#5d5a56;
+  --koncerty:#9e3081; --teatr:#7145b5; --kino:#9a4901; --sport:#057836; --wystawy:#805c03;
 }
 *{box-sizing:border-box;margin:0}
 html,body{width:1200px;height:630px;overflow:hidden}
-body{position:relative;color:var(--on);font-family:"Roboto Flex",system-ui,sans-serif;
-  background:
-    radial-gradient(ellipse 80% 75% at 45% 45%, transparent 60%, rgb(120 78 30 / .22) 100%),
-    linear-gradient(170deg, var(--paper) 0%, var(--paper-2) 100%)}
-/* light paper grain */
-body::before{content:"";position:absolute;inset:0;opacity:.35;mix-blend-mode:multiply;pointer-events:none;
-  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .45  0 0 0 0 .32  0 0 0 0 .16  0 0 0 .5 0'/></filter><rect width='300' height='300' filter='url(%23n)'/></svg>")}
+body{position:relative;color:var(--on);font-family:"Roboto Flex",system-ui,sans-serif;background:var(--surface)}
 .ms{font-family:"Material Symbols Rounded";font-weight:normal;font-style:normal;line-height:1;letter-spacing:normal;
   text-transform:none;white-space:nowrap;direction:ltr;-webkit-font-feature-settings:"liga";font-feature-settings:"liga";
   font-variation-settings:"FILL" 1}
@@ -31,20 +25,20 @@ body::before{content:"";position:absolute;inset:0;opacity:.35;mix-blend-mode:mul
 .brand{display:flex;align-items:center;gap:16px;font:700 26px/1 "Roboto Flex";letter-spacing:-.2px}
 .brand svg{width:52px;height:52px}
 h1{margin-top:28px;font:1000 122px/.92 "Roboto Flex";font-variation-settings:"wdth" 36,"opsz" 144;letter-spacing:-1px;text-transform:uppercase}
-h1 em{font-style:normal;display:block;margin-top:10px;color:var(--rust)}
+h1 em{font-style:normal;display:block;margin-top:10px;color:var(--koncerty)}
 .sub{margin-top:26px;font:550 27px/1.28 "Roboto Flex";color:var(--on)}
 .sub b{font-weight:800}
 .chips{display:flex;gap:9px;margin-top:26px}
-.chip{display:inline-flex;align-items:center;gap:7px;height:42px;padding:0 15px 0 11px;border-radius:13px;color:#fbf1dc;font:700 19px/1 "Roboto Flex"}
+.chip{display:inline-flex;align-items:center;gap:7px;height:42px;padding:0 15px 0 11px;border-radius:13px;color:#fff;font:700 19px/1 "Roboto Flex"}
 .chip .ms{font-size:22px}
 
 /* right column: a stack of event "posters" */
 .stack{position:absolute;right:56px;top:58px;width:400px;height:520px}
-.card{position:absolute;width:300px;border-radius:30px;background:#fbf3e0;box-shadow:0 24px 50px -18px rgb(70 40 10/.45),0 2px 6px rgb(70 40 10/.15);overflow:hidden}
-.card .media{height:230px;position:relative;display:flex;align-items:flex-end;padding:18px 20px;color:#fbf1dc;overflow:hidden}
-.card .media .glyph{position:absolute;right:-26px;top:-30px;font-size:250px;opacity:.2}
+.card{position:absolute;width:300px;border-radius:30px;background:#fff;box-shadow:0 24px 50px -18px rgb(40 30 20/.35),0 2px 6px rgb(40 30 20/.12);overflow:hidden}
+.card .media{height:230px;position:relative;display:flex;align-items:flex-end;padding:18px 20px;color:#fff;overflow:hidden}
+.card .media .glyph{position:absolute;right:-26px;top:-30px;font-size:250px;opacity:.22}
 .card .media .lbl{position:absolute;left:16px;top:16px;display:inline-flex;align-items:center;gap:6px;padding:6px 12px 6px 9px;border-radius:11px;
-  font:750 16px/1 "Roboto Flex";background:rgb(251 243 224/.94)}
+  font:750 16px/1 "Roboto Flex";background:rgb(255 255 255/.92)}
 .card .media .lbl .ms{font-size:19px}
 .card .time{position:relative;font:900 60px/1 "Roboto Flex";font-variation-settings:"wdth" 60;letter-spacing:-.5px}
 .card .time small{font-size:26px;font-weight:650;opacity:.9;margin-left:2px}
@@ -54,42 +48,42 @@ h1 em{font-style:normal;display:block;margin-top:10px;color:var(--rust)}
 .back .media{height:330px}
 .back .media .glyph{font-size:300px;right:-40px;top:auto;bottom:-40px}
 .c1{left:0;top:80px;transform:rotate(-8deg);z-index:1}
-.c1 .media{background:var(--olive)} .c1 .lbl{color:var(--olive)}
+.c1 .media{background:var(--teatr)} .c1 .lbl{color:var(--teatr)}
 .c2{left:120px;top:4px;transform:rotate(6deg);z-index:2}
-.c2 .media{background:var(--ochre)} .c2 .lbl{color:var(--ochre)}
+.c2 .media{background:var(--sport)} .c2 .lbl{color:var(--sport)}
 .c3{left:58px;top:176px;transform:rotate(-1.5deg);z-index:3}
-.c3 .media{background:var(--rust)} .c3 .lbl{color:var(--rust)}
+.c3 .media{background:var(--koncerty)} .c3 .lbl{color:var(--koncerty)}
 
 /* bottom strip */
 .foot{position:absolute;left:72px;right:72px;bottom:40px;display:flex;align-items:center;gap:14px;font:650 21px/1 "Roboto Flex";color:var(--mut)}
-.foot .dot{width:6px;height:6px;border-radius:50%;background:#b89c72}
+.foot .dot{width:6px;height:6px;border-radius:50%;background:#c9c4bd}
 .foot .add{display:inline-flex;align-items:center;gap:8px;color:var(--on);font-weight:800}
-.foot .add .ms{font-size:24px;color:var(--rust)}
+.foot .add .ms{font-size:24px}
 </style>
 </head>
 <body>
 <div class="left">
   <div class="brand">
-    <svg viewBox="0 0 24 24" aria-hidden="true"><rect width="24" height="24" rx="5.5" fill="#3a2614"/><path transform="translate(.96 .96) scale(.92)" fill="#f1e4c4" d="M20 12c0-1.1.9-2 2-2V6c0-1.1-.9-2-2-2H4c-1.1 0-1.99.9-1.99 2v4c1.1 0 1.99.9 1.99 2s-.89 2-2 2v4c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2v-4c-1.1 0-2-.9-2-2zm-4.42 4.8L12 14.5l-3.58 2.3 1.08-4.12-3.29-2.69 4.24-.25L12 5.8l1.54 3.95 4.24.25-3.29 2.69 1.09 4.11z"/></svg>
+    <svg viewBox="0 0 24 24" aria-hidden="true"><rect width="24" height="24" rx="5.5" fill="#1c1b1a"/><path transform="translate(.96 .96) scale(.92)" fill="#faf8f5" d="M20 12c0-1.1.9-2 2-2V6c0-1.1-.9-2-2-2H4c-1.1 0-1.99.9-1.99 2v4c1.1 0 1.99.9 1.99 2s-.89 2-2 2v4c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2v-4c-1.1 0-2-.9-2-2zm-4.42 4.8L12 14.5l-3.58 2.3 1.08-4.12-3.29-2.69 4.24-.25L12 5.8l1.54 3.95 4.24.25-3.29 2.69 1.09 4.11z"/></svg>
     tarnow-wydarzenia.pl
   </div>
   <h1>Wydarzenia<em>Tarnów</em></h1>
   <p class="sub">Co dziś, co w weekend — <b>Tarnów i 50&nbsp;km</b><br>w jednym kalendarzu.</p>
   <div class="chips">
-    <span class="chip" style="background:var(--rust)"><span class="ms">music_note</span>Koncerty</span>
-    <span class="chip" style="background:var(--plum)"><span class="ms">theater_comedy</span>Teatr</span>
-    <span class="chip" style="background:var(--umber)"><span class="ms">movie</span>Kino</span>
-    <span class="chip" style="background:var(--olive)"><span class="ms">sports_soccer</span>Sport</span>
-    <span class="chip" style="background:var(--ochre)"><span class="ms">palette</span>Wystawy</span>
+    <span class="chip" style="background:var(--koncerty)"><span class="ms">music_note</span>Koncerty</span>
+    <span class="chip" style="background:var(--teatr)"><span class="ms">theater_comedy</span>Teatr</span>
+    <span class="chip" style="background:var(--kino)"><span class="ms">movie</span>Kino</span>
+    <span class="chip" style="background:var(--sport)"><span class="ms">sports_soccer</span>Sport</span>
+    <span class="chip" style="background:var(--wystawy)"><span class="ms">palette</span>Wystawy</span>
   </div>
 </div>
 
 <div class="stack" aria-hidden="true">
   <div class="card back c1">
-    <div class="media"><span class="ms glyph">sports_soccer</span><span class="lbl"><span class="ms">sports_soccer</span>Sport</span></div>
+    <div class="media"><span class="ms glyph">theater_comedy</span><span class="lbl"><span class="ms">theater_comedy</span>Teatr</span></div>
   </div>
   <div class="card back c2">
-    <div class="media"><span class="ms glyph">palette</span><span class="lbl"><span class="ms">palette</span>Wystawy</span></div>
+    <div class="media"><span class="ms glyph">sports_soccer</span><span class="lbl"><span class="ms">sports_soccer</span>Sport</span></div>
   </div>
   <div class="card c3">
     <div class="media"><span class="ms glyph">music_note</span><span class="lbl"><span class="ms">music_note</span>Koncerty</span>
