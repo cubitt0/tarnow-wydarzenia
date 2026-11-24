@@ -18,7 +18,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wdth,wght@8..144,25..151,100..1000&display=swap">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..24,400,0..1,0&amp;icon_names=arrow_forward,bedtime,brightness_auto,calendar_add_on,calendar_month,check,chevron_left,chevron_right,child_care,church,close,confirmation_number,content_copy,dark_mode,date_range,east,event,event_available,event_busy,event_upcoming,expand_more,festival,forest,forum,history,light_mode,link,local_activity,location_city,location_on,map,movie,museum,music_note,nightlife,open_in_new,palette,radar,redeem,schedule,search,sports_soccer,theater_comedy,today,visibility,weekend,west&amp;display=block">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..24,400,0..1,0&amp;icon_names=all_inclusive,arrow_forward,bedtime,brightness_auto,calendar_add_on,calendar_month,check,chevron_left,chevron_right,child_care,church,close,confirmation_number,content_copy,dark_mode,date_range,east,event,event_available,event_busy,event_upcoming,expand_more,festival,forest,forum,history,hourglass_bottom,light_mode,link,local_activity,location_city,location_on,map,movie,museum,music_note,new_releases,nightlife,open_in_new,palette,radar,redeem,schedule,search,sports_soccer,theater_comedy,today,visibility,weekend,west&amp;display=block">
 <style>
 /* ============================================================
    Variant C — "Plakat". Ink-on-paper neutrals + 11 category hues.
@@ -313,7 +313,7 @@ html{scrollbar-width:thin;scrollbar-color:color-mix(in srgb,var(--on-surface) 28
 
 /* ---------- poster grid ---------- */
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(232px,1fr));gap:16px}
-.card{display:flex;flex-direction:column;min-width:0;text-align:left;border:0;padding:0;border-radius:20px;background:var(--surface-c-lowest);
+.card{display:flex;flex-direction:column;align-items:stretch;min-width:0;text-align:left;border:0;padding:0;border-radius:20px;background:var(--surface-c-lowest);
   color:var(--on-surface);box-shadow:var(--shadow-1);transition:transform .3s var(--ease),box-shadow .3s var(--ease)}
 .card:hover{transform:translateY(-3px);box-shadow:var(--shadow-2)}
 .card .media{position:relative;aspect-ratio:4/3;background:var(--k);color:var(--ko);overflow:hidden;border-radius:20px 20px 0 0;flex:none}
@@ -325,6 +325,7 @@ html{scrollbar-width:thin;scrollbar-color:color-mix(in srgb,var(--on-surface) 28
 .card .lbl .ms{font-size:15px}
 .card .tbig{position:absolute;left:12px;bottom:8px;z-index:2;color:#fff;font:850 30px/1 var(--font);font-stretch:75%;font-variant-numeric:tabular-nums;
   text-shadow:0 1px 8px rgb(0 0 0 / .4)}
+.card .tbig .rng{font-size:24px;letter-spacing:-.2px}
 .card .tbig small{font-size:15px;font-weight:600;opacity:.9;margin-left:2px}
 /* text card: the media area becomes a bold colour block */
 .card.txt .media{aspect-ratio:auto;min-height:92px;flex:1 0 92px;background:var(--ka);color:var(--koa);border-radius:20px 20px 0 0}
@@ -556,6 +557,13 @@ dialog:focus,dialog:focus-visible,.sheet:focus{outline:none}
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:1ms!important;animation-delay:0s!important;transition-duration:1ms!important;scroll-behavior:auto!important}
 }
+/* ongoing exhibitions: date badge on the card */
+.lcard .until{position:absolute;left:10px;bottom:10px;z-index:2;display:inline-flex;align-items:center;gap:5px;padding:5px 10px 5px 8px;border-radius:10px;
+  background:rgb(20 18 16 / .62);color:#fff;font:700 12.5px/1 var(--font);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.lcard .until .ms{font-size:16px}
+.lcard.soon .until{background:var(--k);color:var(--ko)}
+.lcard.txt .until{background:color-mix(in srgb,var(--koa) 16%,transparent);color:var(--koa);backdrop-filter:none}
+.lcard .lbl.new{background:var(--primary);color:var(--on-primary)}
 </style>
 </head>
 <body>
@@ -708,10 +716,9 @@ const T0 = todayKey();
 const state = {
   view: store.get("view", "day"),
   from: T0, to: T0,
-  off: new Set(store.get("off", ["kino", "dlugie"])),
+  off: new Set(store.get("off", ["kino"])),
   q: "",
   theme: store.get("theme", "system"),
-  longOpen: store.get("longOpen", true),
   pastOpen: false,
   where: store.get("where", "all"),  // all | tarnow | okolice
 };
@@ -720,10 +727,12 @@ function matchQ(e) { return !state.q || e.hay.includes(state.q); }
 function catOK(e) { return e.c.some(c => !state.off.has(c)); }
 function whereOK(e) { return state.where === "all" || (state.where === "tarnow") === !!e.tw; }
 function baseOK(e) { return (e.main || !state.off.has("kino")) && whereOK(e) && matchQ(e); }
-function visible(e) { return baseOK(e) && catOK(e) && !(e.long && state.off.has("dlugie")); }
+// The "Wystawy trwające" box: everything running over a week, and exhibitions of any length.
+function inBox(e) { return e.long || (e.span && e.cat === "wystawy"); }
+function visible(e) { return baseOK(e) && catOK(e) && !(inBox(e) && state.off.has("dlugie")); }
 function overlaps(e, a, b) { return e.sk <= b && e.ek >= a; }
 // "What's on this day" count: dated items on that day; multi-day items count on their first day only.
-function dayItems(k) { return EVENTS.filter(e => !e.long && e.sk === k && visible(e)); }
+function dayItems(k) { return EVENTS.filter(e => !inBox(e) && e.sk === k && visible(e)); }
 
 // ================= small render helpers =================
 function favHTML(url, name, cls = "fav") {
@@ -775,7 +784,8 @@ function srcFoot(e) {
 function cardHTML(e, k, i) {
   const T = todayKey();
   const poster = !!e.img;
-  const big = e.ad ? `<span class="ms f" style="font-size:28px">today</span>` : hm(e.smin);
+  const big = e.multi ? `<span class="rng">${esc(rangeLabel(e.sk, e.ek))}</span>`
+    : e.ad ? (k === todayKey() ? "Dziś" : `<span class="rng">Cały dzień</span>`) : hm(e.smin);
   const rel = k === T ? relHTML(e) : "";
   return `<button class="card sl stag ${poster ? "poster" : "txt"}${e.x ? " x" : ""}${k === T && isPast(e) ? " past" : ""}" data-id="${esc(e.id)}" style="${catVars(e.cat)};--i:${Math.min(i, 14)}">
     <div class="media">
@@ -783,7 +793,7 @@ function cardHTML(e, k, i) {
       <span class="ms glyph" aria-hidden="true">${ICONS[e.cat]}</span>
       <span class="lbl"><span class="ms f">${ICONS[e.cat]}</span><span class="t">${esc(SHORT[e.cat])}</span></span>
       ${e.x ? `<span class="xbadge">ODWOŁANE</span>` : ""}
-      <span class="tbig">${big}${!e.ad && e.emin != null && e.emin > e.smin ? `<small>–${hm(e.emin)}</small>` : ""}</span>
+      <span class="tbig">${big}${!e.span && e.emin != null && e.emin > e.smin ? `<small>–${hm(e.emin)}</small>` : ""}</span>
     </div>
     <div class="body">
       ${rel}
@@ -813,58 +823,99 @@ function miniHTML(e, k, i) {
 // ================= views =================
 function el(html) { const t = document.createElement("template"); t.innerHTML = html.trim(); return t.content.firstElementChild; }
 
-function railsHTML(a, b) { return spanRail(a, b) + longRail(a, b); }
 function spanRail(a, b) {
-  const span = EVENTS.filter(e => e.span && !e.long && overlaps(e, a, b) && visible(e));
+  const span = EVENTS.filter(e => e.span && !inBox(e) && overlaps(e, a, b) && visible(e));
   return span.length ? `<div class="sec"><span class="ms">date_range</span>Trwa w tym czasie<span class="cnt">${span.length}</span><span class="line"></span></div>
     <div class="rail">${span.map((e, i) => slimHTML(e, a, b, i)).join("")}</div>` : "";
 }
-function longRail(a, b) {
-  const longs = EVENTS.filter(e => e.long && overlaps(e, a, b) && baseOK(e) && catOK(e));
+// ----- ongoing exhibitions ("Wystawy trwające"): a box of full cards below the day's programme
+function longsFor(a, b) {
+  return EVENTS.filter(e => inBox(e) && overlaps(e, a, b) && baseOK(e) && catOK(e))
+    .sort((x, y) => (x.ek < y.ek ? -1 : x.ek > y.ek ? 1 : x.t.localeCompare(y.t)));
+}
+function longInfo(e, a) {
+  const left = diffDays(a, e.ek);
+  return {left, perm: left > 120, soon: left <= 7, later: e.sk > a,
+          fresh: e.sk > addDays(todayKey(), -7) && e.sk <= a};  // opened this week (not just the data window's edge)
+}
+function untilText(e, a) {
+  const i = longInfo(e, a);
+  if (i.later) return `od ${shortDate(e.sk)}`;
+  if (i.left <= 0) return "ostatni dzień";
+  if (i.left === 1) return "do jutra";
+  if (i.left <= 7) return `jeszcze ${i.left} dni`;
+  return `do ${shortDate(e.ek)}`;
+}
+function longCardHTML(e, a, i) {
+  const poster = !!e.img, inf = longInfo(e, a);
+  const icon = inf.soon ? "hourglass_bottom" : inf.perm ? "all_inclusive" : "event";
+  const lbl = inf.fresh
+    ? `<span class="lbl new"><span class="ms f">new_releases</span><span class="t">Nowa</span></span>`
+    : `<span class="lbl"><span class="ms f">${ICONS[e.cat]}</span><span class="t">${esc(SHORT[e.cat])}</span></span>`;
+  return `<button class="card lcard sl stag ${poster ? "poster" : "txt"}${inf.soon ? " soon" : ""}${e.x ? " x" : ""}" data-id="${esc(e.id)}" style="${catVars(e.cat)};--i:${Math.min(i, 14)}">
+    <div class="media">
+      ${poster ? `<img src="${esc(e.img)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="imgFail(this)">` : ""}
+      <span class="ms glyph" aria-hidden="true">${ICONS[e.cat]}</span>
+      ${lbl}${e.x ? `<span class="xbadge">ODWOŁANE</span>` : ""}
+      <span class="until"><span class="ms">${icon}</span>${esc(untilText(e, a))}</span>
+    </div>
+    <div class="body">
+      <h3>${esc(e.t)}</h3>
+      ${e.loc ? `<div class="place"><span class="ms">location_on</span><span>${esc(e.loc)}</span></div>` : ""}
+      <div class="foot">${srcFoot(e)}<span class="grow"></span>${priceHTML(e.p)}</div>
+    </div></button>`;
+}
+function longBox(a, b) {
+  const longs = longsFor(a, b);
   if (!longs.length) return "";
   if (state.off.has("dlugie")) {
     return `<div class="hint"><span class="ms">museum</span><span><b>${longs.length}</b> wystaw i wydarzeń trwających tygodniami jest ukrytych.</span>
       <button class="btn tonal sl" data-act="showlong"><span class="ms">visibility</span>Pokaż wystawy</button></div>`;
   }
-  return `<div class="sec${state.longOpen ? "" : " closed"}"><span class="ms">museum</span>Wystawy trwające<span class="cnt">${longs.length}</span><span class="line"></span>
-      <button class="sl" data-act="togglelong" aria-expanded="${state.longOpen}"><span class="ms exp">expand_more</span>${state.longOpen ? "Zwiń" : "Rozwiń"}</button></div>
-    <div class="collapse${state.longOpen ? "" : " closed"}"><div><div class="rail">${longs.map((e, i) => slimHTML(e, a, b, i)).join("")}</div></div></div>`;
+  const T = todayKey(), r = a <= T && T <= b ? T : a;  // count "jeszcze N dni" from today when it is in view
+  return `<div class="sec"><span class="ms">museum</span>Wystawy trwające<span class="cnt">${longs.length}</span><span class="line"></span></div>
+    <div class="grid">${longs.map((e, i) => longCardHTML(e, r, i)).join("")}</div>`;
 }
 
 function dayView() {
   const T = todayKey();
   const searching = !!state.q;
   const a = searching ? T : state.from, b = searching ? (EVENTS.reduce((m, e) => e.ek > m ? e.ek : m, T)) : state.to;
-  let h = `<section class="view">` + railsHTML(a, b);
+  let h = `<section class="view">`;
   let total = 0, shownDays = 0, i = 0;
   const multiDay = a !== b;
   for (const k of daysOf(a, b)) {
-    const list = EVENTS.filter(e => !e.span && !e.long && e.sk === k && visible(e));
+    // All-day and multi-day events open the day (on the first day of the range they are visible in).
+    const spans = EVENTS.filter(e => e.span && !inBox(e) && visible(e) && overlaps(e, k, k) && (e.sk < a ? a : e.sk) === k)
+      .sort((x, y) => (x.multi - y.multi) || (x.ek < y.ek ? -1 : x.ek > y.ek ? 1 : 0));
+    const list = [...spans, ...EVENTS.filter(e => !e.span && e.sk === k && visible(e))];
     total += list.length;
     if (!list.length) continue;
     shownDays++;
     if (multiDay) h += `<button class="dayhead" data-day="${k}"><b>${DOW_LONG[dow(k)]} ${dayNum(k)}</b><span>${MONTHS_GEN[mon(k)]} · ${list.length} ${plural(list.length)}</span><span class="ms">arrow_forward</span></button>`;
-    else h += `<div class="sec"><span class="ms">schedule</span>${k === T ? "Dziś w programie" : "W programie"}<span class="cnt">${list.length}</span><span class="line"></span></div>`;
+    else if (k !== T) h += `<div class="sec"><span class="ms">schedule</span>W programie<span class="cnt">${list.length}</span><span class="line"></span></div>`;
     if (k === T) {
       const past = list.filter(isPast), next = list.filter(e => !isPast(e));
-      if (next.length) h += `<div class="grid">${next.map(e => cardHTML(e, k, i++)).join("")}</div>`;
-      else h += `<div class="hint" style="border-style:solid"><span class="ms">bedtime</span><span>Na dziś to już wszystko — poniżej to, co już się odbyło.</span><button class="btn tonal sl" data-act="tomorrow"><span class="ms">arrow_forward</span>Zobacz jutro</button></div>`;
       if (past.length) {
-        const pOpen = state.pastOpen || !next.length;
+        const pOpen = !!state.pastOpen;
         h += `<div class="sec${pOpen ? "" : " closed"}"><span class="ms">history</span>Wcześniej dziś<span class="cnt">${past.length}</span><span class="line"></span>
           <button class="sl" data-act="togglepast" aria-expanded="${pOpen}"><span class="ms exp">expand_more</span>${pOpen ? "Zwiń" : "Pokaż"}</button></div>
           <div class="collapse${pOpen ? "" : " closed"}"><div><div class="grid" style="padding:2px 2px 8px">${past.map(e => cardHTML(e, k, 0)).join("")}</div></div></div>`;
       }
+      h += `<div class="sec"><span class="ms">schedule</span>Dziś w programie<span class="cnt">${next.length}</span><span class="line"></span></div>`;
+      if (next.length) h += `<div class="grid">${next.map(e => cardHTML(e, k, i++)).join("")}</div>`;
+      else h += `<div class="hint" style="border-style:solid"><span class="ms">bedtime</span><span>Na dziś to już wszystko${past.length ? " — wyżej to, co już się odbyło" : ""}.</span><button class="btn tonal sl" data-act="tomorrow"><span class="ms">arrow_forward</span>Zobacz jutro</button></div>`;
     } else {
       h += `<div class="grid">${list.map(e => cardHTML(e, k, i++)).join("")}</div>`;
     }
     if (searching && shownDays > 60) break;
   }
   if (!total) {
-    const nextK = EVENTS.find(e => !e.long && !e.span && e.sk > b && visible(e))?.sk;
+    const nextK = EVENTS.find(e => !inBox(e) && e.sk > b && visible(e))?.sk;
     h += `<div class="empty"><span class="ms">event_busy</span><div>${searching ? `Nic nie pasuje do „${esc(state.q)}”.` : "Brak wydarzeń dla wybranego miejsca i kategorii."}</div>
       ${nextK && !searching ? `<button class="btn tonal sl" data-day="${nextK}"><span class="ms">arrow_forward</span>Najbliższe: ${esc(longDate(nextK))}</button>` : ""}</div>`;
   }
+  h += longBox(a, b);
   return {node: el(h + `</section>`), total};
 }
 function plural(n) { return n === 1 ? "wydarzenie" : (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14)) ? "wydarzenia" : "wydarzeń"; }
@@ -885,7 +936,7 @@ function weekView() {
       <div class="row">${evs.map((e, i) => miniHTML(e, k, i)).join("")}</div>`;
   });
   // All-day / multi-day band: bars spanning their days, packed into lanes.
-  const spans = EVENTS.filter(e => e.span && !e.long && overlaps(e, ws, we) && visible(e))
+  const spans = EVENTS.filter(e => e.span && !inBox(e) && overlaps(e, ws, we) && visible(e))
     .sort((x, y) => (x.sk < y.sk ? -1 : x.sk > y.sk ? 1 : diffDays(y.sk, y.ek) - diffDays(x.sk, x.ek)));
   const lanes = []; const MAXL = 5; let hidden = 0; let bars = "";
   for (const e of spans) {
@@ -898,9 +949,9 @@ function weekView() {
   }
   const band = spans.length ? `<div class="band">${bars}${hidden ? `<div class="more" style="grid-row:${MAXL + 1}">+${hidden} więcej w widoku dnia</div>` : ""}</div>` : "";
   const node = el(`<section class="view">
-    ${longRail(ws, we)}
     <div class="week">${head}${band}${cols}</div>
     <div class="wlist">${spanRail(ws, we)}${list || `<div class="empty"><span class="ms">event_busy</span>Brak wydarzeń w tym tygodniu.</div>`}</div>
+    ${longBox(ws, we)}
   </section>`);
   return {node, total};
 }
@@ -1021,11 +1072,11 @@ function renderChips(first) {
   const [a, b] = periodRange();
   const inP = EVENTS.filter(e => overlaps(e, a, b) && baseOK(e));
   const counts = {}; let longN = 0;
-  for (const e of inP) { if (e.long) { if (catOK(e)) longN++; continue; } for (const c of e.c) counts[c] = (counts[c] || 0) + 1; }
+  for (const e of inP) { if (inBox(e)) { if (catOK(e)) longN++; continue; } for (const c of e.c) counts[c] = (counts[c] || 0) + 1; }
   const list = CATS.map(c => [c, SHORT[c] || c, counts[c] || 0, c]);
   list.push(["dlugie", "Wystawy trwające", longN, "wystawy"]);
   if (first) {
-    box.innerHTML = list.map(([c, n, , col]) => `<button class="chip sl${c === "dlugie" ? " sep" : ""}" data-c="${c}" style="${catVars(col)}" title="${esc(c === "dlugie" ? "Wystawy i wydarzenia trwające ponad tydzień" : CAL.categories[c] || n)}">
+    box.innerHTML = list.map(([c, n, , col]) => `<button class="chip sl${c === "dlugie" ? " sep" : ""}" data-c="${c}" style="${catVars(col)}" title="${esc(c === "dlugie" ? "Wystawy oraz wydarzenia trwające ponad tydzień" : CAL.categories[c] || n)}">
       <span class="ms ci" aria-hidden="true">${ICONS[c] || "event"}</span><span class="lbl">${esc(n)}</span><span class="n"></span></button>`).join("");
   }
   for (const [c, , n] of list) {
@@ -1335,14 +1386,12 @@ document.addEventListener("click", ev => {
   if (!act) return;
   if (act.dataset.act === "showlong") { state.off.delete("dlugie"); store.set("off", [...state.off]); render("zoom"); }
   else if (act.dataset.act === "tomorrow") { const t = addDays(todayKey(), 1); goRange(t, t); }
-  else if (act.dataset.act === "togglelong" || act.dataset.act === "togglepast") {
-    const isLong = act.dataset.act === "togglelong";
-    const open = isLong ? (state.longOpen = !state.longOpen) : (state.pastOpen = act.closest(".sec").classList.contains("closed"));
-    if (isLong) store.set("longOpen", open);
-    const sec = act.closest(".sec"); sec.classList.toggle("closed", !open);
+  else if (act.dataset.act === "togglepast") {
+    const sec = act.closest(".sec"), open = state.pastOpen = sec.classList.contains("closed");
+    sec.classList.toggle("closed", !open);
     sec.nextElementSibling.classList.toggle("closed", !open);
     act.setAttribute("aria-expanded", String(open));
-    act.lastChild.textContent = open ? "Zwiń" : isLong ? "Rozwiń" : "Pokaż";
+    act.lastChild.textContent = open ? "Zwiń" : "Pokaż";
   }
 });
 addEventListener("keydown", ev => {
