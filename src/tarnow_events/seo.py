@@ -109,10 +109,17 @@ def _page(base: str, path: str, title: str, desc: str, body: str, *, image: str 
         f'<meta property="og:title" content="{escape(title)}">',
         f'<meta property="og:description" content="{escape(desc)}">',
         f'<meta property="og:url" content="{escape(url)}">',
-        f'<meta name="twitter:card" content="{"summary_large_image" if image else "summary"}">',
+        '<meta name="twitter:card" content="summary_large_image">',
+        f'<meta name="twitter:title" content="{escape(title)}">',
+        f'<meta name="twitter:description" content="{escape(desc)}">',
     ]
-    if image:
-        meta.append(f'<meta property="og:image" content="{escape(image)}">')
+    # The event's poster when it has one, otherwise the site's own preview image.
+    img = image or f"{base}/og-image.png"
+    meta += [f'<meta property="og:image" content="{escape(img)}">', f'<meta name="twitter:image" content="{escape(img)}">',
+             f'<meta property="og:image:alt" content="{escape(title)}">']
+    if not image:
+        meta += ['<meta property="og:image:width" content="1200">', '<meta property="og:image:height" content="630">',
+                 '<meta property="og:image:type" content="image/png">']
     meta += [_jsonld(d) for d in ld]
     return f"""<!doctype html>
 <html lang="pl">

@@ -55,7 +55,20 @@ def render_index(settings, feeds, events, configs, stats) -> str:
 
     return f"""<!doctype html><html lang=pl><head><meta charset=utf-8>
 <meta name=viewport content="width=device-width,initial-scale=1">
-<title>Tarnów Wydarzenia</title>
+<title>Dodaj do swojego kalendarza – Wydarzenia Tarnów</title>
+<meta name="description" content="Dodaj wydarzenia z Tarnowa i okolic do swojego kalendarza (Google, Apple, Outlook): wszystkie, tylko Tarnów, okolice albo wybrane kategorie. Lista źródeł i ich stan.">
+<link rel="canonical" href="{escape(base)}/zrodla.html">
+<meta property="og:site_name" content="Wydarzenia Tarnów">
+<meta property="og:locale" content="pl_PL">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Dodaj do swojego kalendarza – Wydarzenia Tarnów">
+<meta property="og:description" content="Wydarzenia z Tarnowa i okolic w Twoim kalendarzu Google, Apple lub Outlook — same się aktualizują.">
+<meta property="og:url" content="{escape(base)}/zrodla.html">
+<meta property="og:image" content="{escape(base)}/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="{escape(base)}/og-image.png">
 <link rel="icon" href="favicon.ico" sizes="48x48">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <style>

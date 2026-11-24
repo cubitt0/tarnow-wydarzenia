@@ -252,7 +252,7 @@ def write_outputs(settings: Settings, events: list[Event], configs: list[SourceC
         (out / "katalog-zrodel.html").write_text(catalogue.read_text(encoding="utf-8"), encoding="utf-8")
     web = Path(__file__).parent / "web"
     # Site icon (Material "local_activity" ticket, same as the logo); PNG/ICO are pre-rendered from the SVG.
-    for name in ("favicon.svg", "favicon.ico", "apple-touch-icon.png"):
+    for name in ("favicon.svg", "favicon.ico", "apple-touch-icon.png", "og-image.png"):
         (out / name).write_bytes((web / name).read_bytes())
     # The web calendar is a static page that reads calendar.json.
     page = (web / "kalendarz.html").read_text(encoding="utf-8")

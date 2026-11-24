@@ -324,3 +324,13 @@ def test_multi_day_events_from_different_sources_merge():
     assert len(choc) == 1 and choc[0].day.day == 27 and choc[0].end.day == 29
     assert {r.source_id for r in choc[0].all_sources()} == {"ittarnow", "umtarnow"}
     assert len(out) == 3
+
+
+def test_every_page_has_a_preview_image():
+    from tarnow_events.seo import _page
+    base = "https://tarnow-wydarzenia.pl"
+    plain = _page(base, "wydarzenie/x/", "Koncert", "Opis", "<p>x</p>")
+    assert 'property="og:image" content="https://tarnow-wydarzenia.pl/og-image.png"' in plain
+    assert 'name="twitter:card" content="summary_large_image"' in plain
+    poster = _page(base, "wydarzenie/y/", "Spektakl", "Opis", "<p>y</p>", image="https://teatr.pl/plakat.jpg")
+    assert 'property="og:image" content="https://teatr.pl/plakat.jpg"' in poster and "og-image.png" not in poster
