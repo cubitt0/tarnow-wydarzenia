@@ -233,7 +233,7 @@ def list_page(base: str, events: list[Event], paths: dict[str, str]) -> str:
                 for d, evs in by_day.items()]
     long = [e for e in events if is_long(e)]
     if long:  # exhibitions that run for weeks would sit under a long-past opening day
-        sections.append('<h2 id="wystawy">Wystawy i wydarzenia trwające</h2><ul class="list">'
+        sections.append('<h2 id="wystawy">Wystawy i wydarzenia wielodniowe</h2><ul class="list">'
                         + items(long, lambda e: f"do {e.end:%d.%m}" if e.end else "") + "</ul>")
     body = (f'<h1>Wydarzenia w Tarnowie i okolicach</h1><p>{len(events)} nadchodzących wydarzeń w Tarnowie i do 50 km: '
             f'koncerty, teatr, wystawy, sport, imprezy dla dzieci. <a href="/">Otwórz kalendarz</a>.</p>'
