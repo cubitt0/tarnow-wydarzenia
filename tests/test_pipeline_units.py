@@ -431,6 +431,34 @@ def test_filmweb_poster_is_requested_large():
     assert big_poster(None) is None
 
 
+def test_tribe_event_website_becomes_second_link():
+    from tarnow_events.config import SourceConfig, Settings
+    from tarnow_events.sources.tribe import TribeSource
+    src = TribeSource(SourceConfig(id="it-tarnow", name="IT", type="tribe", url="https://www.it.tarnow.pl"), Settings.from_env())
+    e = ev("Ciężarówka", T, src="it-tarnow", url="https://www.it.tarnow.pl/wydarzenie/ciezarowka/")
+    src.add_website(e, "https://www.tarnow.pl/Dla-mieszkancow/Aktualnosci/Miasto/Ciezarowka")
+    assert [r.url for r in e.all_sources()] == ["https://www.it.tarnow.pl/wydarzenie/ciezarowka/",
+                                                "https://www.tarnow.pl/Dla-mieszkancow/Aktualnosci/Miasto/Ciezarowka"]
+    assert e.all_sources()[1].source_name == "Strona wydarzenia (tarnow.pl)"
+    same = ev("X", T, src="it-tarnow", url="https://www.it.tarnow.pl/wydarzenie/x/")
+    src.add_website(same, "https://www.it.tarnow.pl/wydarzenie/x")
+    src.add_website(same, "")
+    assert len(same.all_sources()) == 1
+
+
+def test_home_page_lists_coming_week_for_crawlers():
+    from tarnow_events.seo import home_list
+    now = T.replace(hour=12)
+    soon, later, past = ev("Dziady", T, src="a"), ev("Wesele", T + timedelta(days=9), src="a"), ev("Rano", T.replace(hour=9), src="a")
+    soon.uid, later.uid, past.uid = "s", "l", "p"
+    html = home_list([soon, later, past], {"s": "wydarzenie/2026-12-05/dziady/", "l": "x/", "p": "y/"}, now)
+    assert '<a href="wydarzenie/2026-12-05/dziady/">Dziady</a>' in html and "19:00" in html
+    assert "Wesele" not in html and "Rano" not in html
+    page = open("src/tarnow_events/web/kalendarz.html", encoding="utf-8").read()
+    head = page.split("</head>")[0]
+    assert ".js .static-list{display:none}" in head and 'classList.add("js")' in head and "<!--STATIC-LIST-->" in page
+
+
 def test_every_page_has_a_preview_image():
     from tarnow_events.seo import _page
     base = "https://tarnow-wydarzenia.pl"

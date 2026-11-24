@@ -18,7 +18,7 @@ from .ical_out import build_calendar
 from .models import CATEGORIES, TZ, Event
 from .series import collapse_series, is_long
 from .tickets import free_ticket
-from .seo import write_seo
+from .seo import home_list, write_seo
 from .ads import apply_ads
 from .site import render_index
 from .timeinfer import infer_time
@@ -270,6 +270,7 @@ def write_outputs(settings: Settings, events: list[Event], configs: list[SourceC
         (out / name).write_bytes((web / name).read_bytes())
     # The web calendar is a static page that reads calendar.json.
     page = (web / "kalendarz.html").read_text(encoding="utf-8")
+    page = page.replace("<!--STATIC-LIST-->", home_list(events, pages, datetime.now(TZ)))
     (out / "index.html").write_text(apply_ads(page, out, settings.adsense_client, settings.adsense_slot),
                                     encoding="utf-8")
 

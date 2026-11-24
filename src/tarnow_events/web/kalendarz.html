@@ -579,7 +579,16 @@ dialog:focus,dialog:focus-visible,.sheet:focus{outline:none}
 .lcard.soon .until{background:var(--k);color:var(--ko)}
 .lcard.txt .until{background:color-mix(in srgb,var(--koa) 16%,transparent);color:var(--koa);backdrop-filter:none}
 .lcard .lbl.new{background:var(--primary);color:var(--on-primary)}
+/* Plain event list for crawlers without JavaScript (filled at build time). html.js is set by the
+   script below before <body> is parsed, so with scripts on the list is never drawn, not even briefly. */
+.js .static-list{display:none}
+.static-list{padding:8px 0 24px;line-height:1.5}
+.static-list h1{font-size:22px;margin:8px 0}
+.static-list h3{font-size:16px;margin:16px 0 4px}
+.static-list ul{margin:0;padding-left:18px}
+.static-list small{color:var(--on-surface-var)}
 </style>
+<script>document.documentElement.classList.add("js")</script>
 </head>
 <body>
 <header class="bar" id="bar">
@@ -638,6 +647,7 @@ dialog:focus,dialog:focus-visible,.sheet:focus{outline:none}
     </div>
   </div>
   <div class="host" id="host"></div>
+  <!--STATIC-LIST-->
   <!--AD-SLOT-->
   <footer class="foot-page">
     <span id="gen"></span>

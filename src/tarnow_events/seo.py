@@ -243,6 +243,24 @@ def list_page(base: str, events: list[Event], paths: dict[str, str]) -> str:
                  "wystawy, sport, imprezy dla dzieci i festiwale.", body)
 
 
+def home_list(events: list[Event], paths: dict[str, str], now: datetime, days: int = 7) -> str:
+    """Plain list of the coming days for the home page, for crawlers that do not run JavaScript.
+    The page hides it before it is drawn when scripts run (html.js), so visitors never see it."""
+    last = now.astimezone(TZ).date().toordinal() + days
+    by_day: dict = {}
+    for e in sorted((e for e in events if e.uid in paths and not is_long(e)), key=lambda e: (e.start, e.title)):
+        if (e.end or e.start) >= now and e.day.toordinal() < last:
+            by_day.setdefault(e.day, []).append(e)
+    sections = "".join(
+        f'<h3>{escape(long_date(d)).capitalize()}</h3><ul>'
+        + "".join(f'<li>{"cały dzień" if e.all_day else f"{e.start.astimezone(TZ):%H:%M}"} '
+                  f'<a href="{paths[e.uid]}">{escape(e.title)}</a>'
+                  + (f' <small>{escape(e.location_line())}</small>' if e.location_line() else "") + "</li>" for e in evs)
+        + "</ul>" for d, evs in by_day.items())
+    return (f'<section class="static-list" aria-label="Najbliższe wydarzenia"><h1>Wydarzenia w Tarnowie i okolicach – najbliższe {days} dni</h1>'
+            f'{sections}<p><a href="wydarzenia/">Wszystkie nadchodzące wydarzenia</a></p></section>')
+
+
 NOT_FOUND = """<h1>Nie znaleziono strony</h1>
 <p>To wydarzenie mogło się już odbyć albo zmienić termin. Aktualne wydarzenia znajdziesz w kalendarzu.</p>
 <div class="btns"><a class="btn f" href="/">Otwórz kalendarz</a><a class="btn" href="/wydarzenia/">Lista wydarzeń</a></div>"""

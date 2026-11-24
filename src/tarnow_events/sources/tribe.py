@@ -1,16 +1,25 @@
 from __future__ import annotations
 
+import html as htmllib
 from datetime import date, timedelta
+from urllib.parse import urlsplit
 
 from .. import http
 from ..categorize import detect, normalize
-from .base import Source
+from ..models import SourceRef
+from .base import Source, is_machine_url
+
+# Short links in the "event website" field: followed once per run to the page they point at.
+SHORTENERS = {"tiny.pl", "fb.me", "bit.ly", "tinyurl.com", "goo.gl", "t.ly", "shorturl.at"}
 
 
 class TribeSource(Source):
     """WordPress + The Events Calendar plugin: /wp-json/tribe/events/v1/events.
 
     Very common on Polish cultural-centre sites. `url` is the site root.
+
+    The plugin's "event website" field (often the organiser's article: tarnow.pl, tck.pl…) becomes a
+    second link of the event, so people can open it and the picture/ticket lookup reads it too.
     """
 
     type = "tribe"
@@ -49,7 +58,31 @@ class TribeSource(Source):
                     or detect(" ".join(c.get("name", "") for c in item.get("categories") or []))[:2] or None,
                 )
                 if ev:
+                    self.add_website(ev, item.get("website"))
                     yield ev
             if not data.get("next_rest_url"):
                 break
             params["page"] += 1
+
+    def add_website(self, ev, website) -> None:
+        url = htmllib.unescape(website or "").strip()
+        if not url.startswith("http") or is_machine_url(url):
+            return
+        if (urlsplit(url).hostname or "").removeprefix("www.") in SHORTENERS:
+            url = self._resolve(url)
+            if not url:
+                return
+        if url.rstrip("/") == ev.source.url.rstrip("/"):
+            return
+        host = (urlsplit(url).hostname or "").removeprefix("www.")
+        ev.sources = [ev.source, SourceRef(self.cfg.id, f"Strona wydarzenia ({host})", url)]
+
+    def _resolve(self, url: str) -> str | None:
+        cache = self.__dict__.setdefault("_short", {})
+        if url not in cache:
+            try:
+                final = str(http.get(url, retries=0).url)
+                cache[url] = url if "/login" in final else final  # Facebook asks to log in: keep the short link
+            except Exception:
+                cache[url] = None
+        return cache[url]
