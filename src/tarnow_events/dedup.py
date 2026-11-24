@@ -3,11 +3,17 @@
 Two events are the same when they are on the same local day, their titles are near-identical
 (fuzzy), their start times are within an hour (if both have one) and they are not in clearly
 different places. Clusters are formed with union-find so A~B and B~C merge all three.
+
+Multi-day and all-day events get a second pass: sources often disagree on the first day
+("Festiwal Czekolady" 27-29.11 on it.tarnow, "CzekoFest" "this weekend" on the city's news),
+so overlapping ranges in the same place from different sources merge when their titles share a
+distinctive word and are reasonably similar.
 """
 
 from __future__ import annotations
 
 import hashlib
+import logging
 import re
 from collections import defaultdict
 
@@ -15,7 +21,9 @@ from rapidfuzz import fuzz
 from unidecode import unidecode
 
 from .geo import haversine_km, norm_town
-from .models import Event, SourceRef
+from .models import TZ, Event, SourceRef
+
+log = logging.getLogger(__name__)
 
 TITLE_THRESHOLD = 85
 TIME_TOLERANCE_MIN = 60
@@ -60,6 +68,10 @@ def same_event(a: Event, b: Event) -> bool:
     if not a.all_day and not b.all_day:
         if abs((a.start - b.start).total_seconds()) > TIME_TOLERANCE_MIN * 60:
             return False
+    return same_place(a, b)
+
+
+def same_place(a: Event, b: Event) -> bool:
     if None not in (a.lat, a.lon, b.lat, b.lon):
         if haversine_km(a.lat, a.lon, b.lat, b.lon) > PLACE_TOLERANCE_KM:
             # Coordinates may be just the town centre; only trust them if the towns differ too.
@@ -73,6 +85,78 @@ def same_event(a: Event, b: Event) -> bool:
         if ta and tb and ta != tb:
             return False
     return True
+
+
+# ---- multi-day / all-day events whose sources disagree on the dates
+SPAN_TITLE_MIN = 55
+SPAN_GENERIC = {
+    "festiwal", "festiwalu", "swieto", "swieta", "swiateczny", "swiateczne", "jarmark", "jarmarku", "rynku", "rynek",
+    "czyli", "edycja", "edycji", "miasta", "miejski", "miejskie", "gminy", "gminny", "gminne", "dzien", "dni", "dzieci",
+    "rodzinny", "rodzinna", "wielki", "wielka", "zimowy", "zimowa", "letni", "letnia", "wystawy", "wystawie",
+    "konkurs", "konkursu", "warsztaty", "spotkanie", "impreza", "plener", "otwarcie", "wernisaz", "kultury", "centrum",
+    "galeria", "muzeum", "weekend", "stycznia", "lutego", "marca", "kwietnia", "maja", "czerwca", "lipca", "sierpnia",
+    "wrzesnia", "pazdziernika", "listopada", "listopad", "grudnia", "grudzien",
+}
+
+
+def _stems(title: str) -> set[str]:
+    return {w[:6] for w in norm_title(title).split() if len(w) >= 5 and w not in SPAN_GENERIC and not w.startswith("tarnow")}
+
+
+def _first_last(e: Event) -> tuple:
+    first = e.start.astimezone(TZ).date()
+    return first, max(first, (e.end or e.start).astimezone(TZ).date())
+
+
+def is_span(e: Event) -> bool:
+    first, last = _first_last(e)
+    return e.all_day or last > first
+
+
+def same_span(a: Event, b: Event) -> bool:
+    if {r.source_id for r in a.all_sources()} & {r.source_id for r in b.all_sources()}:
+        return False  # one source never lists the same event twice: those are different events
+    (af, al), (bf, bl) = _first_last(a), _first_last(b)
+    if af > bl or bf > al or not same_place(a, b):
+        return False
+    if not _stems(a.title) & _stems(b.title):
+        return False
+    return fuzz.token_set_ratio(norm_title(a.title), norm_title(b.title)) >= SPAN_TITLE_MIN
+
+
+def merge_spans(events: list[Event]) -> list[Event]:
+    spans = [e for e in events if is_span(e)]
+    parent = list(range(len(spans)))
+
+    def find(i: int) -> int:
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+
+    for i in range(len(spans)):
+        for j in range(i + 1, len(spans)):
+            if find(i) != find(j) and same_span(spans[i], spans[j]):
+                parent[find(j)] = find(i)
+    clusters: dict[int, list[Event]] = defaultdict(list)
+    for i, e in enumerate(spans):
+        clusters[find(i)].append(e)
+    gone: set[int] = set()
+    for members in clusters.values():
+        if len(members) < 2:
+            continue
+        first = min(_first_last(m)[0] for m in members)
+        last = max(_first_last(m)[1] for m in members)
+        all_day = all(m.all_day for m in members)
+        log.info("merged multi-day: %s", " + ".join(f"{m.title[:40]!r} ({m.source.source_id})" for m in members))
+        merged = merge(members)  # primary keeps its UID, gains the others' links and details
+        if all_day:  # the sources disagree on the dates: the event covers all of them
+            merged.all_day = True
+            merged.start = merged.start.astimezone(TZ).replace(year=first.year, month=first.month, day=first.day,
+                                                               hour=0, minute=0, second=0, microsecond=0)
+            merged.end = merged.start.replace(year=last.year, month=last.month, day=last.day) if last > first else None
+        gone.update(id(m) for m in members if m is not merged)
+    return [e for e in events if id(e) not in gone]
 
 
 def _richness(e: Event) -> int:
@@ -153,6 +237,7 @@ def deduplicate(events: list[Event], uid_state: dict[str, str]) -> list[Event]:
             merged.uid = uid
             out.append(merged)
 
+    out = merge_spans(out)
     # Two clusters can claim the same old UID after a split; keep UIDs unique.
     seen: set[str] = set()
     for e in sorted(out, key=lambda e: (-e.priority, e.start)):

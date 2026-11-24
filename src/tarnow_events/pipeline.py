@@ -185,6 +185,17 @@ def short_desc(text: str | None) -> str | None:
     return cut.rstrip(" ,.;:–-\n") + "…"
 
 
+def json_end(e: Event) -> str | None:
+    """End for the web page. All-day ends follow iCal there: the day *after* the last day
+    (the model keeps the last day itself, like ical_out/seo do before converting)."""
+    if not e.end:
+        return None
+    if e.all_day:
+        after = e.end.astimezone(TZ).date() + timedelta(days=1)
+        return datetime(after.year, after.month, after.day, tzinfo=TZ).isoformat()
+    return e.end.isoformat()
+
+
 def is_tarnow(e: Event) -> bool:
     if norm_town(e.town) == "tarnow":
         return True
@@ -258,7 +269,7 @@ def calendar_json(events: list[Event], feeds: list[dict], pages: dict[str, str] 
             "id": e.uid,
             "t": ("[ODWOŁANE] " if e.cancelled else "") + e.title,
             "s": e.start.isoformat(),
-            "e": e.end.isoformat() if e.end else None,
+            "e": json_end(e),
             "ad": e.all_day,
             "loc": e.location_line(),
             "geo": [round(e.lat, 5), round(e.lon, 5)] if e.lat is not None else None,

@@ -298,3 +298,29 @@ def test_ads_off_by_default_and_on_with_both_ids(tmp_path):
     assert 'data-ad-client="ca-pub-1234567890123456"' in on and 'data-ad-slot="9876543210"' in on
     assert on.index("adsbygoogle.js") < on.index("</head>") < on.index("<ins") < on.index("<footer>")
     assert (tmp_path / "ads.txt").read_text() == "google.com, pub-1234567890123456, DIRECT, f08c47fec0942fa0\n"
+
+
+def test_web_all_day_end_is_exclusive_like_ical():
+    # Festiwal Czekolady 27-29.11: the model keeps the last day; the page wants the day after it.
+    from tarnow_events.pipeline import json_end
+    e = ev("Festiwal Czekolady", T.replace(month=11, day=27, hour=0), all_day=True)
+    e.end = T.replace(month=11, day=29, hour=0)
+    assert json_end(e).startswith("2026-11-30T00:00")
+    timed = ev("Koncert", T); timed.end = T + timedelta(hours=2)
+    assert json_end(timed) == timed.end.isoformat()
+    assert json_end(ev("X", T)) is None
+
+
+def test_multi_day_events_from_different_sources_merge():
+    from tarnow_events.dedup import deduplicate
+    d = lambda day: T.replace(month=11, day=day, hour=0)
+    a = ev("Festiwal Czekolady na Rynku w Tarnowie", d(27), src="ittarnow", all_day=True); a.end = d(29)
+    b = ev("CzekoFest, czyli święto czekolady na rynku", d(28), src="umtarnow", all_day=True); b.end = d(29)
+    # Two different exhibitions from one source, overlapping, sharing a word: stay apart.
+    x = ev("Wystawa czasowa „do CIEBIE”", d(18), src="ittarnow", all_day=True); x.end = d(30)
+    y = ev("Wernisaż wystawy czasowej „ZAUWAŻONE”", d(20), src="muzeum", all_day=True); y.end = d(30)
+    out = deduplicate([a, b, x, y], {})
+    choc = [e for e in out if "zekol" in e.title.lower()]
+    assert len(choc) == 1 and choc[0].day.day == 27 and choc[0].end.day == 29
+    assert {r.source_id for r in choc[0].all_sources()} == {"ittarnow", "umtarnow"}
+    assert len(out) == 3
