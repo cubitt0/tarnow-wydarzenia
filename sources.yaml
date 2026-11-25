@@ -121,6 +121,7 @@ sources:
     name: Akademia Tarnowska
     type: rss
     url: https://anstar.edu.pl/wydarzenia/feed/
+    proxy: true
     group: edukacja
     category: spotkania
     town: Tarnów
@@ -399,13 +400,13 @@ sources:
   - {id: dom-malarek, name: Dom Malarek w Zalipiu, type: rss, url: "https://dommalarek.pl/feed/", group: region, town: Zalipie, priority: 70}
   - {id: mosir-mielec, name: MOSiR Mielec, type: rss, url: "https://mosir.mielec.pl/feed/", group: region, category: sport, town: Mielec, priority: 60}
   - {id: zakliczyn, name: Gmina Zakliczyn, type: rss, url: "https://www.zakliczyn.pl/feed/", group: region, town: Zakliczyn, priority: 60}
-  - {id: bck-biecz, name: Bieckie Centrum Kultury, type: rss, url: "https://bck.biecz.pl/asp/_private/rss.xml", group: region, town: Biecz, priority: 70}
+  - {id: bck-biecz, name: Bieckie Centrum Kultury, type: rss, url: "https://bck.biecz.pl/asp/_private/rss.xml", group: region, town: Biecz, priority: 70, proxy: true}
   - {id: muzeum-gorlice, name: Muzeum Dwory Karwacjanów i Gładyszów, type: rss, url: "https://www.muzeum.gorlice.pl/wydarzenia-kulturalne?format=feed&type=rss", group: region, town: Gorlice, priority: 70}
   - {id: gok-luzna, name: GOK Łużna, type: rss, url: "https://gok.luzna.pl/blog/x5feed.php", group: region, town: Łużna, priority: 70}
   - {id: gmina-tarnow, name: Gmina Tarnów, type: rss, url: "https://www.gmina.tarnow.pl/nowastrona/index.php?format=feed&type=rss", group: region, town: Tarnów, priority: 60}
-  - {id: powiat-tarnowski, name: Starostwo Powiatowe w Tarnowie, type: rss, url: "https://powiat.tarnow.pl/aktualnosci?format=feed&type=rss", group: region, priority: 50}
+  - {id: powiat-tarnowski, name: Starostwo Powiatowe w Tarnowie, type: rss, url: "https://powiat.tarnow.pl/aktualnosci?format=feed&type=rss", group: region, priority: 50, proxy: true}
   - {id: lgd-zpt, name: LGD Zielony Pierścień Tarnowa, type: rss, url: "https://www.lgdzpt.pl/feed/", group: region, priority: 50}
-  - {id: debica24, name: Debica24.pl, type: rss, url: "https://debica24.pl/rss", group: media, town: Dębica, priority: 30, max_age_days: 14}
+  - {id: debica24, name: Debica24.pl, type: rss, url: "https://debica24.pl/rss", group: media, town: Dębica, priority: 30, max_age_days: 14, proxy: true}
   - {id: halogorlice, name: halogorlice.info, type: rss, url: "https://www.halogorlice.info/rss/articles/pl", group: media, town: Gorlice, priority: 30, max_age_days: 14}
   - {id: zakliczyninfo, name: Głos Zakliczyna, type: rss, url: "https://www.zakliczyninfo.pl/index.php?format=feed&type=rss", group: media, town: Zakliczyn, priority: 30}
   - {id: bochnia-z-bliska, name: Bochnia i Brzesko z bliska – wydarzenia, type: rss, url: "https://bochniazbliska.pl/category/wydarzenia/feed/", group: media, priority: 30}
@@ -415,7 +416,7 @@ sources:
   - {id: brzesko-eventy, name: Gmina Brzesko – wydarzenia, type: html_ai, url: "https://www.brzesko.pl/eventy", group: region, town: Brzesko, priority: 60, refresh_hours: 48}
   - {id: wojnicz, name: Gmina Wojnicz – wydarzenia, type: html_ai, url: "https://wojnicz.pl/wydarzenia", group: region, town: Wojnicz, priority: 60, refresh_hours: 48}
   - {id: radlow, name: Gmina Radłów – wydarzenia, type: html_ai, url: "https://www.gminaradlow.pl/aktualnosci/wydarzenia", group: region, town: Radłów, priority: 60, refresh_hours: 48}
-  - {id: gromnik, name: Gmina Gromnik – kalendarz, type: html_ai, url: "https://www.gromnik.pl/asp/kalendarz,0,listawydarzen,,,26", group: region, town: Gromnik, priority: 60, refresh_hours: 48}
+  - {id: gromnik, name: Gmina Gromnik – kalendarz, type: html_ai, url: "https://www.gromnik.pl/asp/kalendarz,0,listawydarzen,,,26", group: region, town: Gromnik, priority: 60, refresh_hours: 48, proxy: true}
   - {id: sckib-szczucin, name: SCKiB Szczucin, type: html_ai, url: "https://sckibszczucin.pl/wydarzenia", group: region, town: Szczucin, priority: 70, refresh_hours: 48}
   - {id: mok-nowy-wisnicz, name: MOK Nowy Wiśnicz, type: html_ai, url: "https://moknowywisnicz.pl/mok/kalendarium-roczne", group: region, town: Nowy Wiśnicz, priority: 70, refresh_hours: 48}
   - id: mok-debica
@@ -459,10 +460,10 @@ sources:
   - {id: biblioteka-tuchow, name: Biblioteka Publiczna w Tuchowie, type: rss, url: "https://biblioteka.tuchow.pl/feed/", group: region, category: spotkania, town: Tuchów, priority: 70}
   - {id: czchow-gmina, name: Gmina Czchów, type: rss, url: "https://www.czchow.pl/index.php?format=feed&type=rss", group: region, town: Czchów, priority: 50}
   - {id: lgd-beskid-gorlicki, name: LGD Beskid Gorlicki, type: rss, url: "https://lgdbeskidgorlicki.pl/index.php?format=feed&type=rss", group: region, priority: 40}
-  - {id: brzostek-gmina, name: Gmina Brzostek, type: rss, url: "https://brzostek.pl/rss/aktualnosci_pl.xml", group: region, town: Brzostek, priority: 50}
-  - {id: lgd-liwocz, name: LGD Liwocz, type: rss, url: "https://www.lgdliwocz.pl/index.php/aktualnosci?format=feed&type=rss", group: region, priority: 40}
-  - {id: biecz-um, name: Urząd Miejski w Bieczu, type: rss, url: "https://www.biecz.pl/asp/_private/rss.xml", group: region, town: Biecz, priority: 50}
-  - {id: nowy-wisnicz-gmina, name: Miasto i Gmina Nowy Wiśnicz, type: rss, url: "https://nowywisnicz.pl/rss/aktualnosci_pl.xml", group: region, town: Nowy Wiśnicz, priority: 50}
+  - {id: brzostek-gmina, name: Gmina Brzostek, type: rss, url: "https://brzostek.pl/rss/aktualnosci_pl.xml", group: region, town: Brzostek, priority: 50, proxy: true}
+  - {id: lgd-liwocz, name: LGD Liwocz, type: rss, url: "https://www.lgdliwocz.pl/index.php/aktualnosci?format=feed&type=rss", group: region, priority: 40, proxy: true}
+  - {id: biecz-um, name: Urząd Miejski w Bieczu, type: rss, url: "https://www.biecz.pl/asp/_private/rss.xml", group: region, town: Biecz, priority: 50, proxy: true}
+  - {id: nowy-wisnicz-gmina, name: Miasto i Gmina Nowy Wiśnicz, type: rss, url: "https://nowywisnicz.pl/rss/aktualnosci_pl.xml", group: region, town: Nowy Wiśnicz, priority: 50, proxy: true}
   - {id: powiat-gorlicki, name: Powiat Gorlicki, type: rss, url: "https://powiat.gorlice.pl/feed/", group: region, priority: 40}
   - {id: powiat-dabrowski, name: Powiat Dąbrowski, type: html_ai, url: "https://samorzad.gov.pl/web/powiat-dabrowski/informacje-biezace", group: region, town: Dąbrowa Tarnowska, priority: 50, refresh_hours: 48}
   - {id: powiat-brzeski, name: Starostwo Powiatowe w Brzesku, type: html_ai, url: "https://www.powiatbrzeski.pl/", group: region, town: Brzesko, priority: 40, refresh_hours: 72}
@@ -473,14 +474,14 @@ sources:
   - {id: muzeum-biecz, name: Muzeum Ziemi Bieckiej, type: html_ai, url: "https://muzeumbiecz.pl/pl/7904/0/aktualnosci.html", group: region, category: wystawy, town: Biecz, priority: 70, refresh_hours: 48}
   - {id: mdk-bochnia, name: MDK Bochnia, type: html_ai, url: "https://mdk.bochnia.pl/aktualnosci/", group: region, town: Bochnia, priority: 70, refresh_hours: 48}
   - {id: kopalnia-bochnia, name: Kopalnia Soli Bochnia, type: html_ai, url: "https://kopalnia-bochnia.pl/", group: region, town: Bochnia, priority: 60, refresh_hours: 72}
-  - {id: zegocina, name: Gmina Żegocina – kultura, type: html_ai, url: "https://zegocina.pl/kultura", group: region, town: Żegocina, priority: 50, refresh_hours: 72}
+  - {id: zegocina, name: Gmina Żegocina – kultura, type: html_ai, url: "https://zegocina.pl/kultura", group: region, town: Żegocina, priority: 50, refresh_hours: 72, proxy: true}
   - {id: podkarpackie-travel, name: Podkarpackie.travel, type: html_ai, url: "https://podkarpackie.travel/aktualnosci", group: region, priority: 30, refresh_hours: 72}
   - {id: lgd-dunajec-biala, name: LGD Dunajec-Biała, type: html_ai, url: "https://www.dunajecbiala.pl/", group: region, priority: 40, refresh_hours: 72}
   - {id: elektronicznezapisy, name: elektronicznezapisy.pl – biegi Tarnów, type: html_ai, url: "https://elektronicznezapisy.pl/events.html?district=6&city_id=464", group: sport, category: sport, priority: 50, refresh_hours: 72}
   - {id: spr-tarnow, name: SPR Tarnów (piłka ręczna) – terminarz, type: html_ai, url: "https://sportowefakty.wp.pl/pilka-reczna/spr-tarnow/terminarz", group: sport, category: sport, town: Tarnów, priority: 50, refresh_hours: 72, max_chars: 30000}
   # Annual PDF calendars: one AI call per new file.
   - {id: lipnica-kalendarz-pdf, name: GDK Lipnica Murowana – kalendarz imprez 2026, type: pdf_ai, url: "https://kulturalipnica.pl/wp-content/uploads/2026/01/KALENDARZ-IMPREZ-KULTURALNYCH-NA-2026-ROK-1.pdf", group: region, town: Lipnica Murowana, priority: 70}
-  - {id: brzostek-kalendarz-pdf, name: Wiadomości Brzosteckie – kalendarz 2026, type: pdf_ai, url: "https://www.wiadomoscibrzosteckie.pl/kalendarz/2026.pdf", group: region, town: Brzostek, priority: 50, insecure_tls: true}
+  - {id: brzostek-kalendarz-pdf, name: Wiadomości Brzosteckie – kalendarz 2026, type: pdf_ai, url: "https://www.wiadomoscibrzosteckie.pl/kalendarz/2026.pdf", group: region, town: Brzostek, priority: 50, insecure_tls: true, proxy: true}
 
   # ─────────────────────────── CINEMAS via Filmweb / Helios (no AI, kino.ics only) ───────────────────────────
   - id: filmweb

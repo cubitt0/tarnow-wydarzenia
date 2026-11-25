@@ -79,6 +79,10 @@ jobs:
           # Max Gemini requests per day (Settings → Secrets and variables → Actions → Variables).
           TE_AI_DAILY_LIMIT: ${{ vars.TE_AI_DAILY_LIMIT || '60' }}
           TE_PUBLIC_BASE_URL: ${{ steps.pages.outputs.base_url }}
+          # Fetch proxy in GCP Warsaw (proxy/gcp/) for sources marked `proxy: true`: their sites
+          # refuse GitHub's US datacenter IPs. Unset: those sources are fetched directly (and fail).
+          TE_PROXY_URL: ${{ secrets.TE_PROXY_URL }}
+          TE_PROXY_TOKEN: ${{ secrets.TE_PROXY_TOKEN }}
           # AdSense (Settings → Secrets and variables → Actions → Variables). CLIENT alone: verification
           # meta tag + ads.txt; with SLOT also the banner. Both unset: no ad code at all.
           TE_ADSENSE_CLIENT: ${{ vars.TE_ADSENSE_CLIENT }}

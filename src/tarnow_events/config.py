@@ -7,6 +7,8 @@ from typing import Any
 
 import yaml
 
+from . import http
+
 
 @dataclass
 class SourceConfig:
@@ -77,5 +79,7 @@ def load_sources(path: Path) -> list[SourceConfig]:
         if cfg.id in seen:
             raise ValueError(f"duplicate source id {cfg.id!r} in {path}")
         seen.add(cfg.id)
+        if cfg.options.get("proxy"):
+            http.route_via_proxy(cfg.url)
         out.append(cfg)
     return out

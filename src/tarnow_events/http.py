@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import logging
+import os
 import time
+from urllib.parse import urlparse
 
 import httpx
 
@@ -28,6 +30,40 @@ BROWSER_HEADERS = {
 
 _client: httpx.Client | None = None
 
+# Some Polish sites refuse or drop GitHub Actions' (Azure, US) IPs. Requests to hosts of sources
+# marked `proxy: true` in sources.yaml go through a fetch proxy in GCP europe-central2 (Warsaw),
+# see proxy/gcp/. Without TE_PROXY_URL/TE_PROXY_TOKEN (local runs) they are fetched directly.
+PROXY_URL = os.environ.get("TE_PROXY_URL", "").strip()
+PROXY_TOKEN = os.environ.get("TE_PROXY_TOKEN", "").strip()
+_proxy_hosts: set[str] = set()
+
+
+class ProxyLimitReached(RuntimeError):
+    pass
+
+
+def route_via_proxy(url: str) -> None:
+    """Send every later request to this URL's host through the proxy."""
+    if host := urlparse(url).hostname:
+        _proxy_hosts.add(host.lower().removeprefix("www."))
+
+
+def _uses_proxy(url: str) -> bool:
+    host = (urlparse(url).hostname or "").lower().removeprefix("www.")
+    return bool(PROXY_URL and PROXY_TOKEN and host in _proxy_hosts)
+
+
+def _proxied_get(url: str, params: dict | None, headers: dict | None, insecure: bool) -> httpx.Response:
+    target = str(httpx.URL(url, params=params)) if params else url
+    query = {"url": target, **({"insecure": "1"} if insecure else {})}
+    resp = client().get(PROXY_URL, params=query, headers={**(headers or {}), "X-Proxy-Token": PROXY_TOKEN},
+                        timeout=httpx.Timeout(70.0, connect=15.0))
+    if resp.status_code == 429 and "X-Proxy-Limit" in resp.headers:  # hard monthly cap: retrying is pointless
+        raise ProxyLimitReached(f"PL proxy monthly limit ({resp.headers['X-Proxy-Limit']} requests) reached")
+    # Make resp.url (and error messages) show the site's final URL, not the proxy's.
+    resp.request = httpx.Request("GET", resp.headers.get("X-Final-Url", target))
+    return resp
+
 
 def client() -> httpx.Client:
     global _client
@@ -50,7 +86,9 @@ def get(
     last: Exception | None = None
     for attempt in range(retries + 1):
         try:
-            if bare or insecure:
+            if _uses_proxy(url):
+                resp = _proxied_get(url, params, headers, insecure)
+            elif bare or insecure:
                 base = {"User-Agent": BROWSER_HEADERS["User-Agent"]} if bare else dict(BROWSER_HEADERS)
                 resp = httpx.get(url, params=params, follow_redirects=True, timeout=30, verify=not insecure,
                                  headers={**base, **(headers or {})})

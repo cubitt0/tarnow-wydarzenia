@@ -5,3 +5,6 @@ __pycache__/
 *.egg-info/
 .pytest_cache/
 design/
+
+# GCP proxy secrets
+proxy/gcp/env.yaml
