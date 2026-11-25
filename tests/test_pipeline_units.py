@@ -27,6 +27,12 @@ def test_titles_match():
     assert not titles_match("Jazz w Bazie", "Rock w Bazie")
 
 
+def test_inflected_titles_match():
+    assert titles_match("Dyskusyjny Klub Sportowy", "Spotkanie Dyskusyjnego Klubu Sportowego")
+    assert not titles_match("Dyskusyjny Klub Sportowy", "Dyskusyjny Klub Książki")
+    assert not titles_match("Klub Sportowy", "Spotkanie Klubu Sportowego Unia")  # one stem is not enough
+
+
 def test_dedup_merges_across_sources_and_keeps_all_links():
     a = ev("Kult – koncert", T, src="ebilet", prio=40)
     b = ev("KULT", T + timedelta(minutes=30), src="venue", prio=70, lat=50.01, lon=20.98)
@@ -191,6 +197,28 @@ def test_logo_repeated_across_pages_is_ignored(tmp_path):
     b = ev("B", T, src="x", url="https://x.pl/e/9")
     enrich_images([a, b], tmp_path, listing_urls=set())
     assert a.image is None and b.image == "https://x.pl/poster9.jpg"
+
+
+def test_dead_cached_image_makes_page_be_read_again(tmp_path, monkeypatch):
+    import json, time
+    from types import SimpleNamespace
+    from tarnow_events import http, images
+    now = time.time()
+    (tmp_path / "images.json").write_text(json.dumps({
+        "https://x.pl/e/1": {"i": "https://x.pl/old-hash1.jpg", "t": now - 86400, "k": []},
+        "https://x.pl/e/2": {"i": "https://x.pl/ok.jpg", "t": now - 86400, "k": []},
+    }))
+    monkeypatch.setattr(http, "gone", lambda url: "old-hash" in url)
+    page = '<meta property="og:image" content="/new-hash2.jpg">'
+    fetched = []
+    monkeypatch.setattr(http, "get", lambda url, **kw: fetched.append(url) or SimpleNamespace(text=page))
+    a = ev("A", T, src="x", url="https://x.pl/e/1")
+    b = ev("B", T, src="x", url="https://x.pl/e/2")
+    stats = images.enrich_images([a, b], tmp_path, listing_urls=set())
+    assert a.image == "https://x.pl/new-hash2.jpg" and b.image == "https://x.pl/ok.jpg"
+    assert fetched == ["https://x.pl/e/1"] and stats["dead_images"] == 1
+    cache = json.loads((tmp_path / "images.json").read_text())
+    assert cache["https://x.pl/e/2"]["v"] > now - 5  # checked today, not again until tomorrow
 
 
 def test_listing_town_is_corrected_from_address():
@@ -374,6 +402,24 @@ def test_multi_day_events_from_different_sources_merge():
     assert len(choc) == 1 and choc[0].day.day == 27 and choc[0].end.day == 29
     assert {r.source_id for r in choc[0].all_sources()} == {"ittarnow", "umtarnow"}
     assert len(out) == 3
+
+
+def test_daily_digest_repeating_an_exhibition_merges():
+    from tarnow_events.dedup import deduplicate
+    d = lambda day: T.replace(month=11, day=day, hour=0)
+    # halogorlice's daily column lists the same exhibition every day, starting it on the issue's date.
+    issues = [ev("Wystawa pt. Józef Barut. Architekt miasta z gruzów", d(23), src="halo", all_day=True,
+                 url=f"https://halo.pl/{day}") for day in (23, 24, 25)]
+    issues[1].end = issues[2].end = d(30)
+    # Another exhibition from that source in the same days stays apart.
+    other = ev("Pokaz filatelistyczny pt. Bohaterom Ziemi Gorlickiej", d(24), src="halo", all_day=True)
+    other.end = d(30)
+    for e, day in zip(issues, (23, 24, 25)):
+        e.start = d(day)
+    out = deduplicate([*issues, other], {})
+    barut = [e for e in out if "Barut" in e.title]
+    assert len(barut) == 1 and barut[0].day.day == 23 and barut[0].end.day == 30
+    assert len(out) == 2
 
 
 def test_same_venue_same_time_merges_differently_worded_titles():

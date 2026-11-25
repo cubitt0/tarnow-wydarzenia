@@ -27,6 +27,7 @@ from .tickets import choose_ticket, free_ticket, is_ticket_url, page_ticket_cand
 log = logging.getLogger(__name__)
 
 TTL = 30 * 86400
+CHECK_EVERY = 20 * 3600  # a little under a day, so the daily build always re-checks
 SKIP_HOSTS = {"www.facebook.com", "facebook.com", "api.lu.ma", "calendar.google.com"}
 LOGO_REPEATS = 3
 
@@ -49,8 +50,10 @@ def page_image(html: str, url: str) -> str | None:
     return None
 
 
-def enrich_images(events: list[Event], cache_dir: Path, listing_urls: set[str], max_fetches: int = 250) -> dict:
-    """Fill ev.image and ev.tickets from the events' pages. Cache entry: {i: image, t: fetched at, k: ticket links}."""
+def enrich_images(events: list[Event], cache_dir: Path, listing_urls: set[str], max_fetches: int = 250,
+                  max_checks: int = 400) -> dict:
+    """Fill ev.image and ev.tickets from the events' pages.
+    Cache entry: {i: image, t: fetched at, k: ticket links, v: image last seen alive}."""
     path = cache_dir / "images.json"
     try:
         raw: dict = json.loads(path.read_text())
@@ -83,6 +86,28 @@ def enrich_images(events: list[Event], cache_dir: Path, listing_urls: set[str], 
     def wants(ev: Event) -> tuple[bool, bool]:
         need_img = not ev.image or is_logo(ev.source.url, ev.image)
         return need_img, not ev.tickets and not ev.cancelled
+
+    # Sites rename re-uploaded pictures (BWA adds a new hash), so a cached URL can start to 404
+    # within the 30 days. Check the pictures in use once a day; a dead one sends its page to be re-read.
+    to_check: dict[str, list[str]] = defaultdict(list)
+    for ev in events:
+        if not wants(ev)[0]:
+            continue
+        for ref in ev.all_sources():
+            entry = cache.get(ref.url)
+            if entry and entry.get("i") and readable(ref.url) and now - entry.get("v", entry["t"]) > CHECK_EVERY:
+                to_check[entry["i"]].append(ref.url)
+    checks = list(to_check)[:max_checks]
+    dead_images = 0
+    with ThreadPoolExecutor(8) as pool:
+        for img, dead in zip(checks, pool.map(http.gone, checks)):
+            dead_images += dead
+            for page in to_check[img]:
+                if dead:  # forget the picture and re-read the page in this run
+                    cache[page].update(i=None, t=0)
+                    per_host[urlparse(page).hostname or ""][img].discard(page)
+                else:
+                    cache[page]["v"] = now
 
     # Pages to (re)read, in event order, up to the per-run cap; the rest wait for the next runs.
     todo: list[str] = []
@@ -129,4 +154,4 @@ def enrich_images(events: list[Event], cache_dir: Path, listing_urls: set[str], 
                 ev.tickets = choose_ticket(ev, entry["k"])
                 found += bool(ev.tickets)
     path.write_text(json.dumps(cache))
-    return {"image_pages_fetched": len(todo), "images_filled": filled, "tickets_from_sources": free, "tickets_from_pages": found}
+    return {"image_pages_fetched": len(todo), "images_filled": filled, "dead_images": dead_images, "tickets_from_sources": free, "tickets_from_pages": found}

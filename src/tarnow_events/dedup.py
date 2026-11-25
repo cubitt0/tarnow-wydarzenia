@@ -16,6 +16,7 @@ import hashlib
 import logging
 import re
 from collections import defaultdict
+from datetime import timedelta
 
 from rapidfuzz import fuzz
 from unidecode import unidecode
@@ -57,7 +58,12 @@ def titles_match(a: str, b: str) -> bool:
     if min(len(na.split()), len(nb.split())) == 1:
         # token_set_ratio says a one-word title matches anything containing that word.
         return fuzz.ratio(na, nb) >= 90 or (na in nb.split() and len(na) >= 6) or (nb in na.split() and len(nb) >= 6)
-    return fuzz.token_set_ratio(na, nb) >= TITLE_THRESHOLD
+    if fuzz.token_set_ratio(na, nb) >= TITLE_THRESHOLD:
+        return True
+    # Polish inflection defeats fuzzy matching: "Dyskusyjny Klub Sportowy" and "Spotkanie Dyskusyjnego
+    # Klubu Sportowego" are one event. Same distinctive stems (at least two) on one side → same title.
+    sa, sb = _stems(a), _stems(b)
+    return min(len(sa), len(sb)) >= 2 and (sa <= sb or sb <= sa)
 
 
 def same_event(a: Event, b: Event) -> bool:
@@ -126,6 +132,7 @@ def same_slot(a: Event, b: Event) -> bool:
 
 # ---- multi-day / all-day events whose sources disagree on the dates
 SPAN_TITLE_MIN = 55
+SPAN_SAME_SOURCE_MIN = 95
 SPAN_GENERIC = {
     "festiwal", "festiwalu", "swieto", "swieta", "swiateczny", "swiateczne", "jarmark", "jarmarku", "rynku", "rynek",
     "czyli", "edycja", "edycji", "miasta", "miejski", "miejskie", "gminy", "gminny", "gminne", "dzien", "dni", "dzieci",
@@ -151,9 +158,14 @@ def is_span(e: Event) -> bool:
 
 
 def same_span(a: Event, b: Event) -> bool:
-    if {r.source_id for r in a.all_sources()} & {r.source_id for r in b.all_sources()}:
-        return False  # one source never lists the same event twice: those are different events
     (af, al), (bf, bl) = _first_last(a), _first_last(b)
+    if {r.source_id for r in a.all_sources()} & {r.source_id for r in b.all_sources()}:
+        # A daily "what's on" column (halogorlice's "Co gdzie Halo") repeats an ongoing exhibition in
+        # every issue, each time starting it on the issue's date. One source otherwise lists different
+        # events, so only a near-identical title on overlapping or adjacent days counts as the same.
+        if af > bl + timedelta(days=1) or bf > al + timedelta(days=1) or not same_place(a, b):
+            return False
+        return fuzz.token_set_ratio(norm_title(a.title), norm_title(b.title)) >= SPAN_SAME_SOURCE_MIN
     if af > bl or bf > al or not same_place(a, b):
         return False
     if not _stems(a.title) & _stems(b.title):
