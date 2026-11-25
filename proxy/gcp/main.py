@@ -4,9 +4,12 @@ Some Polish sites (municipal CMS hosting, Cloudflare, gov firewalls) refuse GitH
 Azure IPs. The scraper sends those requests here instead, so the site sees a Polish IP.
 Not an open proxy: requires X-Proxy-Token and only fetches hosts from ALLOWED_HOSTS.
 
-Hard cap: every accepted request takes one unit of MONTHLY_LIMIT, counted in Firestore
-(usage/<YYYY-MM>, Warsaw time). Over the limit, or if the counter cannot be read, it refuses
-with 429 and fetches nothing: an outage of the counter must never mean unlimited requests.
+Hard caps, counted in Firestore in one transaction (Warsaw time):
+- DAILY_PER_HOST accepted requests per site host per day (daily/<YYYY-MM-DD>_<host>), so each
+  source is fetched at most once a day however many builds run; the scraper reuses its copy.
+- MONTHLY_LIMIT accepted requests per month in total (usage/<YYYY-MM>).
+Over a limit, or if the counter cannot be read, it refuses with 429 and fetches nothing: an
+outage of the counter must never mean unlimited requests. Refusals do not count.
 """
 import gzip
 import hmac
@@ -23,6 +26,7 @@ from google.cloud import firestore
 TOKEN = os.environ["PROXY_TOKEN"]
 ALLOWED = {h.strip() for h in os.environ["ALLOWED_HOSTS"].split(",") if h.strip()}
 MONTHLY_LIMIT = int(os.environ["MONTHLY_LIMIT"])
+DAILY_PER_HOST = int(os.environ.get("DAILY_PER_HOST", "1"))
 FORWARD = {"user-agent", "accept", "accept-language"}
 MAX_REDIRECTS = 5
 
@@ -34,30 +38,45 @@ def _allowed(url: str) -> bool:
     return p.scheme in ("http", "https") and p.hostname in ALLOWED
 
 
+def _host(url: str) -> str:
+    return (urlparse(url).hostname or "").lower().removeprefix("www.")
+
+
+def _count(snap) -> int:
+    return int((snap.to_dict() or {}).get("count", 0)) if snap.exists else 0
+
+
 @firestore.transactional
-def _increment(tx, ref) -> int | None:
-    snap = ref.get(transaction=tx)
-    used = int((snap.to_dict() or {}).get("count", 0)) if snap.exists else 0
+def _increment(tx, month_ref, day_ref) -> tuple[str | None, int]:
+    """(None, used this month) when the request may go; (refusal reason, 0) when it may not."""
+    used = _count(month_ref.get(transaction=tx))
     if used >= MONTHLY_LIMIT:
-        return None
-    tx.set(ref, {"count": used + 1, "limit": MONTHLY_LIMIT, "updated": firestore.SERVER_TIMESTAMP}, merge=True)
-    return used + 1
+        return f"monthly limit of {MONTHLY_LIMIT} requests reached", 0
+    if day_ref is not None:
+        today = _count(day_ref.get(transaction=tx))
+        if today >= DAILY_PER_HOST:
+            return f"daily limit of {DAILY_PER_HOST} request(s) for this host reached", 0
+        tx.set(day_ref, {"count": today + 1, "updated": firestore.SERVER_TIMESTAMP})
+    tx.set(month_ref, {"count": used + 1, "limit": MONTHLY_LIMIT, "updated": firestore.SERVER_TIMESTAMP}, merge=True)
+    return None, used + 1
 
 
-def _take_quota() -> int | None:
-    """Count this request; None when the month's limit is used up or the counter is unavailable."""
+def _take_quota(url: str) -> tuple[str | None, int]:
+    """Count this request against the monthly cap and, for a site URL, its host's daily cap."""
     global _db
     try:
         _db = _db or firestore.Client()
-        month = datetime.now(ZoneInfo("Europe/Warsaw")).strftime("%Y-%m")
-        return _increment(_db.transaction(), _db.collection("usage").document(month))
+        now = datetime.now(ZoneInfo("Europe/Warsaw"))
+        month_ref = _db.collection("usage").document(now.strftime("%Y-%m"))
+        day_ref = None if url == "ip" else _db.collection("daily").document(f"{now:%Y-%m-%d}_{_host(url)}")
+        return _increment(_db.transaction(), month_ref, day_ref)
     except Exception:
         logging.exception("quota counter unavailable, refusing")
-        return None
+        return "quota counter unavailable", 0
 
 
-def _limited():
-    return f"monthly limit of {MONTHLY_LIMIT} requests reached", 429, {"X-Proxy-Limit": str(MONTHLY_LIMIT)}
+def _limited(reason: str):
+    return reason, 429, {"X-Proxy-Limit": reason}
 
 
 @functions_framework.http
@@ -67,9 +86,9 @@ def fetch(request):
     url = request.args.get("url", "")
     if url != "ip" and not _allowed(url):
         return f"host not allowed: {urlparse(url).hostname}", 400
-    used = _take_quota()
-    if used is None:
-        return _limited()
+    refused, used = _take_quota(url)
+    if refused:
+        return _limited(refused)
     if url == "ip":  # debug: which IP and country do sites see?
         return requests.get("https://ipinfo.io/json", timeout=10).text, 200, {"Content-Type": "application/json"}
 

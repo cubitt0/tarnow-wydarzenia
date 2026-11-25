@@ -1,9 +1,14 @@
 from __future__ import annotations
 
+import hashlib
+import json
 import logging
 import os
 import time
+from datetime import datetime
+from pathlib import Path
 from urllib.parse import urlparse
+from zoneinfo import ZoneInfo
 
 import httpx
 
@@ -30,12 +35,17 @@ BROWSER_HEADERS = {
 
 _client: httpx.Client | None = None
 
-# Some Polish sites refuse or drop GitHub Actions' (Azure, US) IPs. Requests to hosts of sources
-# marked `proxy: true` in sources.yaml go through a fetch proxy in GCP europe-central2 (Warsaw),
-# see proxy/gcp/. Without TE_PROXY_URL/TE_PROXY_TOKEN (local runs) they are fetched directly.
+# Some Polish sites refuse or drop GitHub Actions' (Azure, US) IPs. The URLs of sources marked
+# `proxy: true` in sources.yaml are fetched through a proxy in GCP europe-central2 (Warsaw), see
+# proxy/gcp/, which allows one request per site host per day. Each answer is kept in
+# cache/proxy/, so later builds that day reuse it instead of asking again, and a refusal falls
+# back to the last copy. Other pages on those hosts (event pages, pictures) are not proxied.
+# Without TE_PROXY_URL/TE_PROXY_TOKEN (local runs) everything is fetched directly.
 PROXY_URL = os.environ.get("TE_PROXY_URL", "").strip()
 PROXY_TOKEN = os.environ.get("TE_PROXY_TOKEN", "").strip()
 _proxy_hosts: set[str] = set()
+_proxy_urls: set[str] = set()
+WARSAW = ZoneInfo("Europe/Warsaw")
 
 
 class ProxyLimitReached(RuntimeError):
@@ -43,25 +53,75 @@ class ProxyLimitReached(RuntimeError):
 
 
 def route_via_proxy(url: str) -> None:
-    """Send every later request to this URL's host through the proxy."""
+    """Fetch this exact URL (a source's own) through the proxy from now on."""
+    _proxy_urls.add(url)
     if host := urlparse(url).hostname:
         _proxy_hosts.add(host.lower().removeprefix("www."))
 
 
+def _proxy_on() -> bool:
+    return bool(PROXY_URL and PROXY_TOKEN)
+
+
 def _uses_proxy(url: str) -> bool:
-    host = (urlparse(url).hostname or "").lower().removeprefix("www.")
-    return bool(PROXY_URL and PROXY_TOKEN and host in _proxy_hosts)
+    return _proxy_on() and url in _proxy_urls
+
+
+def _on_proxied_host(url: str) -> bool:
+    return _proxy_on() and (urlparse(url).hostname or "").lower().removeprefix("www.") in _proxy_hosts
+
+
+def _cache_paths(target: str) -> tuple[Path, Path]:
+    root = Path(os.environ.get("TE_CACHE_DIR", Path(os.environ.get("TE_ROOT", Path.cwd())) / "cache")) / "proxy"
+    key = hashlib.sha256(target.encode()).hexdigest()[:24]
+    return root / f"{key}.json", root / f"{key}.bin"
+
+
+def _cached(target: str) -> tuple[str, httpx.Response] | None:
+    """(Warsaw day it was fetched, response) of the last proxied answer for this URL."""
+    meta_path, body_path = _cache_paths(target)
+    try:
+        meta = json.loads(meta_path.read_text())
+        resp = httpx.Response(meta["status"], content=body_path.read_bytes(),
+                              headers={"Content-Type": meta["content_type"]},
+                              request=httpx.Request("GET", meta["final_url"]))
+        return meta["day"], resp
+    except (OSError, ValueError, KeyError):
+        return None
+
+
+def _store(target: str, resp: httpx.Response) -> None:
+    meta_path, body_path = _cache_paths(target)
+    try:
+        meta_path.parent.mkdir(parents=True, exist_ok=True)
+        body_path.write_bytes(resp.content)
+        meta_path.write_text(json.dumps({
+            "day": f"{datetime.now(WARSAW):%Y-%m-%d}", "status": resp.status_code, "url": target,
+            "final_url": str(resp.url), "content_type": resp.headers.get("Content-Type", ""),
+        }))
+    except OSError as e:
+        log.warning("proxy cache: cannot store %s: %s", target, e)
 
 
 def _proxied_get(url: str, params: dict | None, headers: dict | None, insecure: bool) -> httpx.Response:
     target = str(httpx.URL(url, params=params)) if params else url
+    cached = _cached(target)
+    if cached and cached[0] == f"{datetime.now(WARSAW):%Y-%m-%d}":
+        log.info("proxy: %s already fetched today, reusing that copy", target)
+        return cached[1]
     query = {"url": target, **({"insecure": "1"} if insecure else {})}
     resp = client().get(PROXY_URL, params=query, headers={**(headers or {}), "X-Proxy-Token": PROXY_TOKEN},
                         timeout=httpx.Timeout(70.0, connect=15.0))
-    if resp.status_code == 429 and "X-Proxy-Limit" in resp.headers:  # hard monthly cap: retrying is pointless
-        raise ProxyLimitReached(f"PL proxy monthly limit ({resp.headers['X-Proxy-Limit']} requests) reached")
+    if resp.status_code == 429 and "X-Proxy-Limit" in resp.headers:  # a hard cap: retrying is pointless
+        reason = resp.headers["X-Proxy-Limit"]
+        if cached:
+            log.warning("proxy: %s refused (%s), using the copy from %s", target, reason, cached[0])
+            return cached[1]
+        raise ProxyLimitReached(f"PL proxy: {reason}")
     # Make resp.url (and error messages) show the site's final URL, not the proxy's.
     resp.request = httpx.Request("GET", resp.headers.get("X-Final-Url", target))
+    if resp.status_code == 200:
+        _store(target, resp)
     return resp
 
 
@@ -75,6 +135,17 @@ def client() -> httpx.Client:
             http2=False,
         )
     return _client
+
+
+def gone(url: str) -> bool:
+    """True only when the server says the file is not there (404/410). Errors, other statuses and
+    proxied hosts (whose requests count against the monthly cap) are given the benefit of the doubt."""
+    if _on_proxied_host(url):
+        return False
+    try:
+        return client().head(url, timeout=15).status_code in (404, 410)
+    except httpx.HTTPError:
+        return False
 
 
 def get(

@@ -6,9 +6,11 @@ US datacenter IPs with 403 or drop the connection. Sources marked `proxy: true` 
 see a Polish IP. The scraper uses it only when `TE_PROXY_URL` and `TE_PROXY_TOKEN` are set.
 
 - Auth: `X-Proxy-Token` header; only hosts in `ALLOWED_HOSTS` are fetched (redirects included).
-- Hard cap: `MONTHLY_LIMIT` accepted requests per calendar month, counted in Firestore
-  (`usage/<YYYY-MM>`). Over it, the function answers 429 and the scraper reports
-  "PL proxy monthly limit reached" for those sources until the next month.
+- Hard caps, counted in Firestore and refused with 429 (refusals don't count):
+  - `DAILY_PER_HOST` (1) request per site host per Warsaw day (`daily/<YYYY-MM-DD>_<host>`).
+    The scraper keeps each answer in `cache/proxy/`, so later builds that day reuse it without
+    asking, and a refusal falls back to the last copy. Only sources' own URLs are proxied.
+  - `MONTHLY_LIMIT` requests per calendar month in total (`usage/<YYYY-MM>`).
 - `?url=ip` shows the IP and country the sites see (counts as one request).
 
 `env.yaml` (gitignored) holds `PROXY_TOKEN`, `ALLOWED_HOSTS`, `MONTHLY_LIMIT`, and in comments
