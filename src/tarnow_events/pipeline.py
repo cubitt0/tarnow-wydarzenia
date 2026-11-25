@@ -259,7 +259,6 @@ def write_outputs(settings: Settings, events: list[Event], configs: list[SourceC
     (out / "calendar.json").write_text(cal)
     # The page loads data as a script (works from file:// too, no fetch/CORS concerns).
     (out / "data.js").write_text("window.CAL = " + cal.replace("</", "<\\/") + ";\n")
-    download_favicons(settings, events)
     (out / "zrodla.html").write_text(render_index(settings, feeds, events, configs, stats), encoding="utf-8")
     catalogue = settings.root / "docs" / "sources.html"
     if catalogue.exists():  # research catalogue of every source considered, published as-is
@@ -310,36 +309,3 @@ def calendar_json(events: list[Event], feeds: list[dict], pages: dict[str, str] 
         "feeds": [{"path": f["path"], "name": f["name"], "count": f["count"]} for f in feeds if f["group"] != "source"],
         "events": rows,
     }
-
-
-def download_favicons(settings: Settings, events: list[Event]) -> None:
-    """Source favicons are fetched once at build time and served from the site itself, so visitors'
-    browsers never contact a third-party icon service. Cached for 30 days; misses are retried weekly."""
-    from urllib.parse import urlparse
-
-    import httpx
-
-    hosts = {urlparse(r.url).hostname for e in events for r in e.all_sources()} - {None}
-    cache = settings.cache_dir / "favicons"
-    cache.mkdir(parents=True, exist_ok=True)
-    out = settings.out_dir / "favicons"
-    out.mkdir(parents=True, exist_ok=True)
-    now = time.time()
-    fetched = 0
-    for host in sorted(hosts):
-        hit, miss = cache / f"{host}.ico", cache / f"{host}.miss"
-        if not hit.exists() or now - hit.stat().st_mtime > 30 * 86400:
-            if not (miss.exists() and now - miss.stat().st_mtime < 7 * 86400):
-                try:
-                    r = httpx.get(f"https://icons.duckduckgo.com/ip3/{host}.ico", timeout=10, follow_redirects=True)
-                    fetched += 1
-                    if r.status_code == 200 and len(r.content) > 100 and r.headers.get("content-type", "").startswith("image"):
-                        hit.write_bytes(r.content)
-                        miss.unlink(missing_ok=True)
-                    else:
-                        miss.touch()
-                except httpx.HTTPError:
-                    pass
-        if hit.exists():
-            (out / f"{host}.ico").write_bytes(hit.read_bytes())
-    log.info("favicons: %d hosts, %d fetched, %d available", len(hosts), fetched, len(list(out.glob("*.ico"))))

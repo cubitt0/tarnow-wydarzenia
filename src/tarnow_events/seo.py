@@ -47,6 +47,42 @@ def page_paths(events: list[Event]) -> dict[str, str]:
     return paths
 
 
+# Cinema screenings are not in the main feeds, but each still gets a page, so a shared link shows the
+# poster and showtime and leads to the ticket. Hundreds of near-identical pages would only dilute
+# search results, so they are noindex and stay out of the sitemap.
+def is_screening(e: Event) -> bool:
+    return not e.in_main and "kino" in e.categories
+
+
+def film_title(title: str) -> str:
+    """"Jestem Rocky (Kino Millenium (CSM))" -> "Jestem Rocky": drops a trailing (cinema), nested brackets too."""
+    t = title.strip()
+    if t.endswith(")"):
+        depth = 0
+        for i in range(len(t) - 1, -1, -1):
+            depth += {")": 1, "(": -1}.get(t[i], 0)
+            if depth == 0:
+                if t[:i].strip():
+                    t = t[:i].strip()
+                break
+    return t
+
+
+def screening_paths(shows: list[Event], taken: set[str]) -> dict[str, str]:
+    """uid -> "wydarzenie/2026-11-29/jestem-rocky/kino-millenium-csm-20-15/"; two shows at one time get -2."""
+    paths: dict[str, str] = {}
+    for e in shows:
+        s = e.start.astimezone(TZ)
+        place = slugify(re.sub(r"\(.*", "", e.location_name or "") or e.town or "kino", 30)
+        base = f"wydarzenie/{s.date().isoformat()}/{slugify(film_title(e.title))}/{place}-{s:%H-%M}"
+        path, n = base, 2
+        while path in taken:
+            path, n = f"{base}-{n}", n + 1
+        taken.add(path)
+        paths[e.uid] = path + "/"
+    return paths
+
+
 def long_date(d) -> str:
     return f"{DAYS[d.weekday()]}, {d.day} {MONTHS[d.month - 1]} {d.year}"
 
@@ -144,7 +180,7 @@ def _page(base: str, path: str, title: str, desc: str, body: str, *, image: str 
 """
 
 
-def event_page(base: str, e: Event, path: str, siblings: list[tuple[Event, str]]) -> str:
+def event_page(base: str, e: Event, path: str, siblings: list[tuple[Event, str]], *, screening: bool = False) -> str:
     s = e.start.astimezone(TZ)
     place = e.location_line()
     cats = [CATEGORIES.get(c, c) for c in e.categories]
@@ -199,11 +235,14 @@ def event_page(base: str, e: Event, path: str, siblings: list[tuple[Event, str]]
     btns.append(f'<a class="btn" href="{escape(src[0].url)}" rel="noopener nofollow">Strona organizatora</a>')
     more = ""
     if siblings:
+        def when(o: Event) -> str:
+            t = o.start.astimezone(TZ)
+            return "cały dzień" if o.all_day else f"{DAYS[t.weekday()][:3]} {t.day}.{t.month:02d}, {t:%H:%M}" if screening else f"{t:%H:%M}"
         items = "".join(
-            f'<li><span class="t">{"cały dzień" if o.all_day else f"{o.start.astimezone(TZ):%H:%M}"}</span> '
+            f'<li><span class="t">{when(o)}</span> '
             f'<a href="/{p}">{escape(o.title)}</a><small>{escape(o.location_line() or "")}</small></li>'
             for o, p in siblings[:12])
-        more = f"<h2>Tego samego dnia</h2><ul class=\"list\">{items}</ul>"
+        more = f"<h2>{'Inne seanse' if screening else 'Tego samego dnia'}</h2><ul class=\"list\">{items}</ul>"
 
     anchor = "wystawy" if is_long(e) else s.date().isoformat()
     body = f"""<nav class="crumbs"><a href="/">Kalendarz</a> › <a href="/wydarzenia/#{anchor}">{"Wystawy wielodniowe" if is_long(e) else escape(long_date(s.date()))}</a></nav>
@@ -216,7 +255,7 @@ def event_page(base: str, e: Event, path: str, siblings: list[tuple[Event, str]]
 <div class="btns">{"".join(btns)}</div>
 </article>
 {more}"""
-    return _page(base, path, title, desc, body, image=e.image, og_type="article", ld=[ld, crumbs])
+    return _page(base, path, title, desc, body, image=e.image, og_type="article", ld=[ld, crumbs], noindex=screening)
 
 
 def list_page(base: str, events: list[Event], paths: dict[str, str]) -> str:
@@ -248,7 +287,7 @@ def home_list(events: list[Event], paths: dict[str, str], now: datetime, days: i
     The page hides it before it is drawn when scripts run (html.js), so visitors never see it."""
     last = now.astimezone(TZ).date().toordinal() + days
     by_day: dict = {}
-    for e in sorted((e for e in events if e.uid in paths and not is_long(e)), key=lambda e: (e.start, e.title)):
+    for e in sorted((e for e in events if e.uid in paths and e.in_main and not is_long(e)), key=lambda e: (e.start, e.title)):
         if (e.end or e.start) >= now and e.day.toordinal() < last:
             by_day.setdefault(e.day, []).append(e)
     sections = "".join(
@@ -271,6 +310,8 @@ def write_seo(out: Path, base: str, events: list[Event], now: datetime) -> dict[
     upcoming = sorted((e for e in events if e.in_main and (e.end or e.start) >= now),
                       key=lambda e: (e.start, e.title))
     paths = page_paths(upcoming)
+    shows = sorted((e for e in events if is_screening(e) and e.start >= now), key=lambda e: (e.start, e.title))
+    show_paths = screening_paths(shows, {p.rstrip("/") for p in paths.values()})
     shutil.rmtree(out / "wydarzenie", ignore_errors=True)  # events gone from the window lose their pages
     by_day: dict = {}
     for e in upcoming:
@@ -280,6 +321,17 @@ def write_seo(out: Path, base: str, events: list[Event], now: datetime) -> dict[
         f = out / paths[e.uid] / "index.html"
         f.parent.mkdir(parents=True, exist_ok=True)
         f.write_text(event_page(base, e, paths[e.uid], siblings), encoding="utf-8")
+    by_film: dict = {}
+    for e in shows:
+        by_film.setdefault(slugify(film_title(e.title)), []).append(e)
+    for e in shows:
+        # Other showtimes of the film, nearest first: same cinema before other cinemas.
+        others = sorted((o for o in by_film[slugify(film_title(e.title))] if o.uid != e.uid),
+                        key=lambda o: (o.location_name != e.location_name, o.start))
+        f = out / show_paths[e.uid] / "index.html"
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text(event_page(base, e, show_paths[e.uid], [(o, show_paths[o.uid]) for o in others], screening=True),
+                     encoding="utf-8")
     (out / "wydarzenia").mkdir(parents=True, exist_ok=True)
     (out / "wydarzenia" / "index.html").write_text(list_page(base, upcoming, paths), encoding="utf-8")
     (out / "404.html").write_text(_page(base, "404.html", f"Nie znaleziono | {SITE}", "Nie znaleziono strony.",
@@ -297,4 +349,4 @@ def write_seo(out: Path, base: str, events: list[Event], now: datetime) -> dict[
     lines.append("</urlset>")
     (out / "sitemap.xml").write_text("\n".join(lines) + "\n", encoding="utf-8")
     (out / "robots.txt").write_text(f"User-agent: *\nAllow: /\n\nSitemap: {base}/sitemap.xml\n", encoding="utf-8")
-    return paths
+    return {**paths, **show_paths}

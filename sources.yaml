@@ -261,6 +261,18 @@ sources:
     priority: 40
     search_location: Tarnów
     distance: 50
+    # Organiser id (the number after /kino/ in Bilety24 links) -> cinema. Cards only give the town; this puts
+    # films at their cinema (screening page addresses, map pins). Names follow Filmweb's where both list the
+    # cinema. New ids are looked up automatically (long official name from the film page, logged) and can be added here.
+    venues:
+      1225: {name: Kino Sokół Nowy Sącz, address: "ul. Długosza 3"}
+      1303: {name: Kino Sokół Dąbrowa Tarnowska, address: "ul. Kościuszki 11"}
+      1726: {name: Kino Śnieżka Dębica, address: "ul. Bojanowskiego 18"}
+      1581: {name: Gorlickie Centrum Kultury, address: "ul. Michalusa 4"}
+      1321: {name: MCKCiE Grybów, address: "ul. Kościuszki 7"}
+      1658: {name: GCKiC Lisia Góra, address: "ul. 1 Maja 2"}
+      1155: {name: ECM Krzysztofa Pendereckiego, address: "Lusławice 250"}
+      1368: {name: Limanowski Dom Kultury, address: "ul. Bronisława Czecha 4"}
   - id: kupbilecik
     name: KupBilecik – Tarnów i okolice
     type: jsonld

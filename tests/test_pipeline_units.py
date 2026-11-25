@@ -51,6 +51,31 @@ def test_categories():
     assert detect("Koncert kolęd dla dzieci")[:2] == ["koncerty", "dzieci"]
     assert detect("Mecz Unia Tarnów – Stal")[0] == "sport"
     assert detect("Wernisaż wystawy malarstwa")[0] == "wystawy"
+    # A trailing space in a keyword means a whole word: rock is music, Rocky is not.
+    assert "koncerty" not in detect("Jestem Rocky")
+    assert "koncerty" in detect("Koncert rockowy") and "koncerty" in detect("Rock & Blues Night")
+    assert "koncerty" not in detect("Operator drona – pokaz")
+
+
+def test_film_and_concert_pairs_resolved():
+    from tarnow_events.categorize import categorize
+
+    def cats(title, source_default="inne", source_cats=None, desc=None):
+        e = ev(title, T)
+        e.description = desc
+        e.categories = source_cats or [source_default]
+        categorize(e, source_default, from_source=e.categories != [source_default])
+        return e.categories
+
+    assert cats("Jestem Rocky (Kino Millenium (CSM))", "kino", desc="biograficzny, dramat") == ["kino"]
+    assert cats("Orkiestra (Multikino)", "kino") == ["kino"]
+    assert cats("Jestem Rocky / Napisy", source_cats=["kino", "koncerty"]) == ["kino"]  # AI guessed both
+    assert cats("Koncert Muzyki Filmowej", "koncerty") == ["koncerty"]
+    assert cats("MUZYKA Z FILMÓW ANDRZEJA WAJDY") == ["koncerty"]
+    assert set(cats("Metallica: koncert w kinie – retransmisja", "kino")) == {"kino", "koncerty"}
+    assert set(cats("Met Opera: Tosca – transmisja", "kino")) == {"kino", "koncerty"}
+    assert set(cats("Balet Bolszoj: Dziadek do orzechów – retransmisja", "kino")) == {"kino", "teatr"}
+    assert cats("Kino moralnego niepokoju", "teatr") == ["teatr"]  # a play titled after film: theatre says teatr
 
 
 def test_to_datetime():
@@ -283,6 +308,31 @@ def test_seo_pages_sitemap_and_jsonld(tmp_path):
     assert 'name="robots" content="noindex"' in (tmp_path / "404.html").read_text()
 
 
+def test_screenings_get_noindex_pages_by_film_cinema_and_time(tmp_path):
+    from tarnow_events.seo import film_title, home_list, write_seo
+    assert film_title("Jestem Rocky (Kino Millenium (CSM))") == "Jestem Rocky"
+    assert film_title("(Nie)znajomi") == "(Nie)znajomi" and film_title("JESTEM ROCKY") == "JESTEM ROCKY"
+
+    def show(title, place, start, n):
+        e = ev(title, start, src=f"s{n}")
+        e.location_name, e.in_main, e.categories, e.uid = place, False, ["kino"], f"show{n}@x"
+        return e
+    a = show("Jestem Rocky (Kino Millenium (CSM))", "Kino Millenium (CSM)", T + timedelta(hours=1, minutes=15), 1)
+    a.tickets = "https://bilety.csm.tarnow.pl/Kino/default.aspx?event_id=36993"
+    b = show("Jestem Rocky (Multikino Tarnów)", "Multikino Tarnów", T + timedelta(days=1), 2)
+    twin = show("Jestem Rocky (Kino Millenium (CSM))", "Kino Millenium (CSM)", T + timedelta(hours=1, minutes=15), 3)
+    main = ev("Koncert Kult", T, src="m"); main.uid = "main@x"
+    pages = write_seo(tmp_path, "https://example.pl", [main, a, b, twin], T - timedelta(days=1))
+    assert pages["show1@x"] == "wydarzenie/2026-12-05/jestem-rocky/kino-millenium-20-15/"
+    assert pages["show3@x"] == "wydarzenie/2026-12-05/jestem-rocky/kino-millenium-20-15-2/"
+    assert pages["show2@x"] == "wydarzenie/2026-12-06/jestem-rocky/multikino-tarnow-19-00/"
+    html = (tmp_path / pages["show1@x"] / "index.html").read_text()
+    assert 'name="robots" content="noindex"' in html and "Inne seanse" in html
+    assert f'href="/{pages["show2@x"]}"' in html and ">Kup bilet<" in html
+    assert "jestem-rocky" not in (tmp_path / "sitemap.xml").read_text()
+    assert "Rocky" not in home_list([main, a, b], pages, T - timedelta(hours=1))
+
+
 def test_ads_off_by_default_and_on_with_both_ids(tmp_path):
     from tarnow_events.ads import HEAD_MARK, SLOT_MARK, apply_ads
     page = f"<head>{HEAD_MARK}</head><main>{SLOT_MARK}<footer></footer></main>"
@@ -369,6 +419,38 @@ def test_kino_marzenie_one_event_per_screening_with_ticket_link():
     assert out[0].title == "EBENEZER SCROOGE (Kino Marzenie)" and out[0].description.startswith("Seans: DUBBING")
     assert out[0].source.url == "https://www.kinomarzenie.pl/repertuar?start_date=2026-11-26&end_date=2026-11-26"
     assert not out[0].in_main
+
+
+def test_bilety24_films_get_their_cinema_from_the_organiser_id(monkeypatch):
+    from types import SimpleNamespace
+
+    from tarnow_events.config import Settings, SourceConfig
+    from tarnow_events.sources import bilety24
+
+    def card(href, title):
+        return f'''<div class="k_polecane"><a href="{href}" class="full-info" title="{title}">
+          <span class="kategoria kategoria-film">FILM</span></a><span class="cenainfo">od 18,00 pln</span></div>'''
+    page = (card("/kino/1225-jestem-rocky-168244?id=1", "Film: JESTEM ROCKY - 2026-11-29 17:55 - Nowy Sącz")
+            + card("/kino/9999-lalka-1?id=2", "Film: LALKA - 2026-11-29 18:00 - Limanowa")
+            + card("/kino/9999-lalka-1?id=3", "Film: LALKA - 2026-11-30 18:00 - Limanowa"))
+    film_page = '''<script type="application/ld+json">{"@type": "Event", "location": {"@type": "Place",
+      "name": "Limanowski  Dom Kultury", "address": {"streetAddress": "Bronisława Czecha 4"}}}</script>'''
+    calls = []
+
+    def fake_get(url, params=None, **kw):
+        calls.append(url)
+        if url == bilety24.FRAGMENT:
+            return SimpleNamespace(text=page if params["page"] == 1 else "")
+        return SimpleNamespace(text=film_page)
+    monkeypatch.setattr(bilety24.http, "get", fake_get)
+    cfg = SourceConfig(id="bilety24", name="Bilety24", type="bilety24", url="https://www.bilety24.pl/",
+                       options={"venues": {1225: {"name": "Kino Sokół Nowy Sącz", "address": "ul. Długosza 3"}}})
+    out = list(bilety24.Bilety24Source(cfg, Settings.from_env()).fetch())
+    assert [(e.location_name, e.address) for e in out] == [
+        ("Kino Sokół Nowy Sącz", "ul. Długosza 3"),
+        ("Limanowski Dom Kultury", "Bronisława Czecha 4"), ("Limanowski Dom Kultury", "Bronisława Czecha 4")]
+    assert sum("/kino/9999" in u for u in calls) == 1  # an unknown organiser is looked up once
+    assert not any(e.in_main for e in out)
 
 
 def test_kino_millenium_screenings_from_kino_tarnow_pl():

@@ -55,7 +55,7 @@
   --shadow-2:0 2px 6px 2px rgb(0 0 0 / .10),0 1px 2px rgb(0 0 0 / .12);
   --k-imprezy:#fedddb;--ko-imprezy:#551015;--ka-imprezy:#af2934;--koa-imprezy:#ffffff;
   --k-kino:#ffdfcd;--ko-kino:#4a2001;--ka-kino:#9a4901;--koa-kino:#ffffff;
-  --k-wystawy:#fce3b5;--ko-wystawy:#3d2a00;--ka-wystawy:#805c03;--koa-wystawy:#ffffff;
+  --k-wystawy:#ffeea8;--ko-wystawy:#3d2e00;--ka-wystawy:#f0b400;--koa-wystawy:#2e2300;
   --k-festiwale:#e2edbc;--ko-festiwale:#2b3200;--ka-festiwale:#5e6b01;--koa-festiwale:#ffffff;
   --k-sport:#c8f3d0;--ko-sport:#013916;--ka-sport:#057836;--koa-sport:#ffffff;
   --k-dzieci:#b5f5ee;--ko-dzieci:#003633;--ka-dzieci:#04736c;--koa-dzieci:#ffffff;
@@ -80,7 +80,7 @@
   --shadow-2:0 2px 6px 2px rgb(0 0 0 / .45),0 1px 2px rgb(0 0 0 / .5);
   --k-imprezy:#5c2323;--ko-imprezy:#ffdbd9;--ka-imprezy:#ffa09c;--koa-imprezy:#3a0e0f;
   --k-kino:#592902;--ko-kino:#ffddc9;--ka-kino:#ffa56d;--koa-kino:#351500;
-  --k-wystawy:#4a3401;--ko-wystawy:#f9e1b8;--ka-wystawy:#e7b551;--koa-wystawy:#2a1d01;
+  --k-wystawy:#4d3c00;--ko-wystawy:#ffeca6;--ka-wystawy:#ffd23f;--koa-wystawy:#2b2100;
   --k-festiwale:#353d00;--ko-festiwale:#e0ebbe;--ka-festiwale:#b6c963;--koa-festiwale:#1d2200;
   --k-sport:#0b441f;--ko-sport:#c9f1d0;--ka-sport:#7cd591;--koa-sport:#00270d;
   --k-dzieci:#00423e;--ko-dzieci:#b7f2ec;--ka-dzieci:#32d8cd;--koa-dzieci:#002523;
@@ -101,7 +101,7 @@
   --shadow-2:0 2px 6px 2px rgb(0 0 0 / .45),0 1px 2px rgb(0 0 0 / .5);
   --k-imprezy:#5c2323;--ko-imprezy:#ffdbd9;--ka-imprezy:#ffa09c;--koa-imprezy:#3a0e0f;
   --k-kino:#592902;--ko-kino:#ffddc9;--ka-kino:#ffa56d;--koa-kino:#351500;
-  --k-wystawy:#4a3401;--ko-wystawy:#f9e1b8;--ka-wystawy:#e7b551;--koa-wystawy:#2a1d01;
+  --k-wystawy:#4d3c00;--ko-wystawy:#ffeca6;--ka-wystawy:#ffd23f;--koa-wystawy:#2b2100;
   --k-festiwale:#353d00;--ko-festiwale:#e0ebbe;--ka-festiwale:#b6c963;--koa-festiwale:#1d2200;
   --k-sport:#0b441f;--ko-sport:#c9f1d0;--ka-sport:#7cd591;--koa-sport:#00270d;
   --k-dzieci:#00423e;--ko-dzieci:#b7f2ec;--ka-dzieci:#32d8cd;--koa-dzieci:#002523;
@@ -217,8 +217,6 @@ html{scrollbar-width:thin;scrollbar-color:color-mix(in srgb,var(--on-surface) 28
 .when .dchip{background:var(--surface)}
 .cats{flex-wrap:wrap!important;gap:8px!important;padding:2px 0 8px!important;margin:0!important}
 .cats .chip{flex:none}
-.cats .chip[data-c="dlugie"]{margin-left:13px;position:relative;overflow:visible}
-.cats .chip[data-c="dlugie"]::before{content:"";position:absolute;left:-11px;top:6px;bottom:6px;width:1px;background:var(--outline-var)}
 .quick{display:flex;flex-direction:column;gap:6px;flex:none;justify-content:center}
 .quick .row{display:flex;gap:6px}
 .qchip{height:34px;padding:0 14px;border-radius:17px;border:1px solid var(--outline-var);background:transparent;font-weight:600;color:var(--on-surface);
@@ -587,6 +585,52 @@ dialog:focus,dialog:focus-visible,.sheet:focus{outline:none}
 .static-list h3{font-size:16px;margin:16px 0 4px}
 .static-list ul{margin:0;padding-left:18px}
 .static-list small{color:var(--on-surface-var)}
+/* ---------- map of the period's events ---------- */
+.msheet{width:min(1040px,calc(100vw - 48px));height:min(86vh,860px);max-height:none;display:flex;flex-direction:column;overflow:hidden}
+.mhead{display:flex;align-items:center;gap:12px;padding:14px 12px 10px 24px}
+.mhead .mt{flex:1;min-width:0}
+.mhead h3{margin:0;font:800 24px/1.1 var(--font);font-stretch:85%;letter-spacing:-.2px}
+.mhead small{display:block;margin-top:3px;color:var(--on-surface-var);font-size:12.5px}
+.mwrap{position:relative;flex:1;min-height:0;margin:0 12px 12px;border-radius:20px;overflow:hidden;background:var(--surface-c)}
+#map{position:absolute;inset:0}
+.mmsg{position:absolute;inset:0;display:grid;place-items:center;padding:24px;text-align:center;color:var(--on-surface-var);pointer-events:none}
+.mmsg[hidden]{display:none}
+.mpin{cursor:pointer}
+.pin{position:relative;width:36px;height:36px;border-radius:50%;border:0;padding:0;display:grid;place-items:center;cursor:pointer;
+  background:var(--ka);color:var(--koa);box-shadow:0 0 0 3px var(--surface-c-lowest),0 3px 10px rgb(0 0 0 / .22);transition:transform .18s var(--ease),box-shadow .18s}
+.pin .ms{font-size:19px;font-variation-settings:"FILL" 1}
+.pin b{position:absolute;top:-7px;right:-9px;min-width:20px;height:20px;padding:0 5px;border-radius:10px;background:var(--on-surface);color:var(--surface);
+  font:700 11px/20px var(--font);text-align:center;box-shadow:0 0 0 2px var(--surface-c-lowest);font-variant-numeric:tabular-nums}
+.pin:hover{transform:scale(1.12)}
+.pin.on{transform:scale(1.18);box-shadow:0 0 0 3px var(--surface-c-lowest),0 0 0 6px var(--ka),0 6px 16px rgb(0 0 0 / .28)}
+.pin:focus-visible{outline:none;box-shadow:0 0 0 3px var(--surface-c-lowest),0 0 0 6px var(--primary)}
+.mcard{position:absolute;left:12px;top:12px;width:340px;max-height:calc(100% - 24px);overflow:auto;overscroll-behavior:contain;z-index:3;
+  background:var(--surface-c-lowest);color:var(--on-surface);border-radius:18px;box-shadow:0 8px 28px rgb(0 0 0 / .22);padding:0 6px 8px;animation:dlgIn .3s var(--ease-dec);scrollbar-width:thin}
+.mcard[hidden]{display:none}
+.mc-h{display:flex;align-items:center;gap:8px;padding:10px 2px 8px 10px;position:sticky;top:0;background:var(--surface-c-lowest);z-index:1}
+.mc-h>.ms{color:var(--on-surface-var);font-size:20px}
+.mc-h div{flex:1;min-width:0}
+.mc-h b{display:block;font-weight:750;line-height:1.25;overflow-wrap:anywhere}
+.mc-h small{color:var(--on-surface-var);font-size:12px}
+.mc-h .icon-btn{width:34px;height:34px}
+.mc-ev{display:grid;grid-template-columns:30px 1fr;gap:10px;padding:8px 8px;border-radius:12px}
+.mc-i{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;background:var(--k);color:var(--ko);font-size:18px;font-variation-settings:"FILL" 1}
+.mc-t{all:unset;cursor:pointer;font-weight:650;line-height:1.3;overflow-wrap:anywhere}
+.mc-t:hover{text-decoration:underline;text-underline-offset:3px}
+.mc-t:focus-visible{outline:2px solid var(--primary);outline-offset:2px;border-radius:4px}
+.mc-times{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.mc-times button{border:0;border-radius:8px;padding:3px 8px;font:600 12px/1.35 var(--font);background:var(--surface-c-high);color:var(--on-surface);cursor:pointer;font-variant-numeric:tabular-nums}
+.mc-times button:hover,.mc-times button:focus-visible{background:var(--k);color:var(--ko);outline:none}
+.mwrap .maplibregl-ctrl-group{border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgb(0 0 0 / .18)}
+.mwrap .maplibregl-ctrl-attrib{font-size:11px}
+:root[data-theme="dark"] .mwrap .maplibregl-ctrl-group,:root[data-theme="dark"] .mwrap .maplibregl-ctrl-attrib{filter:invert(.92) hue-rotate(180deg)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .mwrap .maplibregl-ctrl-group,:root:not([data-theme="light"]) .mwrap .maplibregl-ctrl-attrib{filter:invert(.92) hue-rotate(180deg)}}
+@media (max-width:860px){
+  .msheet{width:100%;height:90vh;border-radius:28px 28px 0 0}
+  .mhead{padding:12px 8px 8px 20px}
+  .mwrap{margin:0 8px 8px;border-radius:18px}
+  .mcard{left:8px;right:8px;top:auto;bottom:8px;width:auto;max-height:55%}
+}
 </style>
 <script>document.documentElement.classList.add("js")</script>
 </head>
@@ -604,6 +648,7 @@ dialog:focus,dialog:focus-visible,.sheet:focus{outline:none}
     <div class="bar-act" style="display:flex;gap:2px">
       <button class="icon-btn sl s-open" id="sOpen" aria-label="Szukaj" title="Szukaj (/)"><span class="ms">search</span></button>
       <button class="icon-btn sl" id="theme" aria-label="Zmień motyw" title="Motyw: systemowy"><span class="ms" id="themeIcon">brightness_auto</span></button>
+      <button class="icon-btn sl" id="mapBtn" aria-label="Mapa wydarzeń" title="Mapa wydarzeń (p)"><span class="ms">map</span></button>
       <button class="icon-btn sl" id="subscribe" aria-label="Subskrybuj kalendarz" title="Subskrybuj kalendarz (iCal)"><span class="ms">calendar_add_on</span></button>
     </div>
   </div>
@@ -651,13 +696,20 @@ dialog:focus,dialog:focus-visible,.sheet:focus{outline:none}
   <!--AD-SLOT-->
   <footer class="foot-page">
     <span id="gen"></span>
-    <span class="kb">Skróty: <kbd>←</kbd><kbd>→</kbd> przewijanie · <kbd>t</kbd> dziś · <kbd>d</kbd><kbd>w</kbd><kbd>m</kbd> widok · <kbd>/</kbd> szukaj</span>
+    <span class="kb">Skróty: <kbd>←</kbd><kbd>→</kbd> przewijanie · <kbd>t</kbd> dziś · <kbd>d</kbd><kbd>w</kbd><kbd>m</kbd> widok · <kbd>/</kbd> szukaj · <kbd>p</kbd> mapa</span>
     <a href="wydarzenia/">Lista wydarzeń</a>
     <a href="zrodla.html">Źródła i status</a>
   </footer>
 </main>
 
 <dialog id="dlg" aria-label="Szczegóły"><div class="sheet" id="sheet"></div></dialog>
+<dialog id="mapDlg" aria-label="Mapa wydarzeń"><div class="sheet msheet">
+  <div class="mhead">
+    <div class="mt"><h3 id="mapTitle">Mapa</h3><small id="mapSub"></small></div>
+    <button class="icon-btn sl" data-act="mapclose" aria-label="Zamknij mapę"><span class="ms">close</span></button>
+  </div>
+  <div class="mwrap"><div id="map"></div><div class="mmsg" id="mapMsg">Wczytywanie mapy…</div><div class="mcard" id="mapCard" hidden></div></div>
+</div></dialog>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="data.js"></script>
@@ -756,6 +808,8 @@ const state = {
   pastOpen: false,
   where: store.get("where", "all"),  // all | tarnow | okolice
 };
+// "dlugie" (a separate "Wystawy wielodniowe" chip) is now part of "wystawy"; drop it from saved filters.
+if (state.off.delete("dlugie")) store.set("off", [...state.off]);
 
 function matchQ(e) { return !state.q || e.hay.includes(state.q); }
 function catOK(e) { return e.c.some(c => !state.off.has(c)); }
@@ -764,6 +818,7 @@ function whereOK(e) { return state.where === "all" || (state.where === "tarnow")
 // so chip counters stay independent of which chips are on.
 function baseOK(e) { return whereOK(e) && matchQ(e); }
 // The "Wystawy wielodniowe" box: everything running over a week, and exhibitions of any length.
+// The "Wystawy" chip switches the whole box together with exhibitions in the day's programme.
 function inBox(e) { return e.long || (e.span && e.c0[0] === "wystawy"); }
 // A tile shows its first category that is switched on; switched-off ones move to the end.
 function orderCats() {
@@ -773,7 +828,7 @@ function orderCats() {
     e.cat = e.c[0];
   }
 }
-function visible(e) { return baseOK(e) && catOK(e) && !(inBox(e) && state.off.has("dlugie")); }
+function visible(e) { return baseOK(e) && catOK(e) && !(inBox(e) && state.off.has("wystawy")); }
 function overlaps(e, a, b) { return e.sk <= b && e.ek >= a; }
 // "What's on this day" count: dated items on that day; multi-day items count on their first day only.
 function dayItems(k) { return EVENTS.filter(e => !inBox(e) && e.sk === k && visible(e)); }
@@ -783,7 +838,7 @@ function favHTML(url, name, cls = "fav") {
   let host = ""; try { host = new URL(url).hostname; } catch {}
   const letter = esc((name || host || "?").replace(/^www\./, "").charAt(0));
   if (!host) return `<span class="${cls} av" aria-hidden="true">${letter}</span>`;
-  return `<img class="${cls}" src="favicons/${esc(host)}.ico" alt="" loading="lazy" data-l="${letter}" onerror="favFail(this)">`;
+  return `<img class="${cls}" src="https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&amp;sz=32" alt="" loading="lazy" referrerpolicy="no-referrer" data-l="${letter}" onload="if(this.naturalWidth<32)favFail(this)" onerror="favFail(this)">`;
 }
 function favFail(img) {
   const s = document.createElement("span"); s.className = img.className + " av"; s.textContent = img.dataset.l || "?"; s.setAttribute("aria-hidden", "true");
@@ -874,7 +929,7 @@ function spanRail(a, b) {
 }
 // ----- ongoing exhibitions ("Wystawy wielodniowe"): a box of full cards below the day's programme
 function longsFor(a, b) {
-  return EVENTS.filter(e => inBox(e) && overlaps(e, a, b) && baseOK(e) && catOK(e))
+  return EVENTS.filter(e => inBox(e) && overlaps(e, a, b) && visible(e))
     .sort((x, y) => (x.ek < y.ek ? -1 : x.ek > y.ek ? 1 : x.t.localeCompare(y.t)));
 }
 function longInfo(e, a) {
@@ -910,12 +965,14 @@ function longCardHTML(e, a, i) {
     </div></button>`;
 }
 function longBox(a, b) {
-  const longs = longsFor(a, b);
-  if (!longs.length) return "";
-  if (state.off.has("dlugie")) {
-    return `<div class="hint"><span class="ms">museum</span><span><b>${longs.length}</b> wystaw i wydarzeń trwających tygodniami jest ukrytych.</span>
+  if (state.off.has("wystawy")) {
+    const n = EVENTS.filter(e => inBox(e) && overlaps(e, a, b) && baseOK(e)).length;
+    if (!n) return "";
+    return `<div class="hint"><span class="ms">museum</span><span><b>${n}</b> wystaw i wydarzeń trwających tygodniami jest ukrytych.</span>
       <button class="btn tonal sl" data-act="showlong"><span class="ms">visibility</span>Pokaż wystawy</button></div>`;
   }
+  const longs = longsFor(a, b);
+  if (!longs.length) return "";
   const T = todayKey(), r = a <= T && T <= b ? T : a;  // count "jeszcze N dni" from today when it is in view
   return `<div class="sec"><span class="ms">museum</span>Wystawy wielodniowe<span class="cnt">${longs.length}</span><span class="line"></span></div>
     <div class="grid">${longs.map((e, i) => longCardHTML(e, r, i)).join("")}</div>`;
@@ -1117,12 +1174,12 @@ function renderChips(first) {
   const box = document.getElementById("cats");
   const [a, b] = periodRange();
   const inP = EVENTS.filter(e => overlaps(e, a, b) && baseOK(e));
-  const counts = {}; let longN = 0;
-  for (const e of inP) { if (inBox(e)) { longN++; continue; } for (const c of e.c) counts[c] = (counts[c] || 0) + 1; }
+  const counts = {};
+  // Box items (long-running) count under "wystawy", which switches the box, as well as under their own categories.
+  for (const e of inP) for (const c of new Set(inBox(e) ? [...e.c, "wystawy"] : e.c)) counts[c] = (counts[c] || 0) + 1;
   const list = CATS.map(c => [c, SHORT[c] || c, counts[c] || 0, c]);
-  list.push(["dlugie", "Wystawy wielodniowe", longN, "wystawy"]);
   if (first) {
-    box.innerHTML = list.map(([c, n, , col]) => `<button class="chip sl${c === "dlugie" ? " sep" : ""}" data-c="${c}" style="${catVars(col)}" title="${esc(c === "dlugie" ? "Wystawy oraz wydarzenia trwające ponad tydzień" : CAL.categories[c] || n)}">
+    box.innerHTML = list.map(([c, n, , col]) => `<button class="chip sl" data-c="${c}" style="${catVars(col)}" title="${esc(c === "wystawy" ? "Wystawy oraz wydarzenia trwające ponad tydzień" : CAL.categories[c] || n)}">
       <span class="ms ci" aria-hidden="true">${ICONS[c] || "event"}</span><span class="lbl">${esc(n)}</span><span class="n"></span></button>`).join("");
   }
   for (const [c, , n] of list) {
@@ -1162,6 +1219,9 @@ function scrollToContent() {
 
 // ================= navigation =================
 const HASH = {day: "dzien", week: "tydzien", month: "miesiac"};
+// The calendar's own path; an open event shows its page path instead (see openEvent) and closing puts this back.
+const HOME = location.pathname;
+const pretty = () => location.protocol.startsWith("http");  // a local file has no event pages
 let suppressHash = false;
 function writeHash() {
   if (suppressHash || dlg.open) return;
@@ -1169,7 +1229,7 @@ function writeHash() {
   let h = "#" + HASH[state.view];
   if (state.view === "day" && (state.from !== T || state.to !== T)) h += "=" + state.from + (state.to !== state.from ? "_" + state.to : "");
   else if (state.view !== "day" && state.from !== T) h += "=" + state.from;
-  if (location.hash !== h) history.replaceState(null, "", h);
+  if (location.pathname !== HOME || location.hash !== h) history.replaceState(null, "", HOME + h);
 }
 function readHash() {
   const h = decodeURIComponent(location.hash.slice(1));
@@ -1276,12 +1336,15 @@ function openEvent(id, fromHash) {
   sheet.scrollTop = 0;
   dlg.classList.remove("closing");
   if (!dlg.open) dlg.showModal();
-  history.replaceState(null, "", "#e=" + encodeURIComponent(e.id));
+  // The address bar shows the event's own page (/wydarzenie/…/), which is also what a reload or a copied
+  // address opens; events without a page keep #e=. The page's relative links (footer) sit behind the modal
+  // and cannot be clicked while it is open; closing it puts the calendar's path back (writeHash).
+  history.replaceState(null, "", e.u && pretty() ? "/" + e.u : HOME + "#e=" + encodeURIComponent(e.id));
 }
 // Shared links point at the event's own page (title, picture and date in link previews);
 // a local copy of the site has no such pages and keeps the #e= link.
 function eventUrl(e) {
-  return e.u && location.protocol.startsWith("http") ? new URL("/" + e.u, location.href).href
+  return e.u && pretty() ? new URL("/" + e.u, location.href).href
     : location.href.split("#")[0] + "#e=" + encodeURIComponent(e.id);
 }
 function closeDlg() {
@@ -1361,7 +1424,7 @@ function applyTheme() {
   requestAnimationFrame(() => document.querySelector('meta[name="theme-color"]').content = getComputedStyle(document.body).backgroundColor);
 }
 document.getElementById("theme").onclick = () => {
-  state.theme = THEMES[(THEMES.indexOf(state.theme) + 1) % 3]; store.set("theme", state.theme); applyTheme();
+  state.theme = THEMES[(THEMES.indexOf(state.theme) + 1) % 3]; store.set("theme", state.theme); applyTheme(); syncMapStyle();
   toast("Motyw: " + THEME_NAME[state.theme]);
 };
 
@@ -1438,7 +1501,7 @@ document.addEventListener("click", ev => {
   if (dayEl) { goRange(dayEl.dataset.day, dayEl.dataset.day); if (!dayEl.classList.contains("dchip")) scrollToContent(); return; }
   const act = ev.target.closest("[data-act]");
   if (!act) return;
-  if (act.dataset.act === "showlong") { state.off.delete("dlugie"); store.set("off", [...state.off]); render("zoom"); }
+  if (act.dataset.act === "showlong") { state.off.delete("wystawy"); store.set("off", [...state.off]); refreshStripCounts(); render("zoom"); }
   else if (act.dataset.act === "tomorrow") { const t = addDays(todayKey(), 1); goRange(t, t); }
   else if (act.dataset.act === "togglepast") {
     const sec = act.closest(".sec"), open = state.pastOpen = sec.classList.contains("closed");
@@ -1449,10 +1512,11 @@ document.addEventListener("click", ev => {
   }
 });
 addEventListener("keydown", ev => {
-  if (ev.target.closest("input,textarea") || dlg.open || ev.ctrlKey || ev.metaKey || ev.altKey) return;
+  if (ev.target.closest("input,textarea") || dlg.open || mapDlg.open || ev.ctrlKey || ev.metaKey || ev.altKey) return;
   const k = ev.key;
   if (k === "ArrowLeft") step(-1); else if (k === "ArrowRight") step(1);
   else if (k === "t") goToday();
+  else if (k === "p") openMap();
   else if (k === "d") setView("day"); else if (k === "w") setView("week"); else if (k === "m") setView("month");
   else if (k === "/") { ev.preventDefault(); bar.classList.add("searching"); q.focus(); }
   else return;
@@ -1476,6 +1540,160 @@ addEventListener("hashchange", () => {
 });
 // Refresh "teraz / za 2 h" hints every minute.
 setInterval(() => { if (state.view === "day" && state.from === todayKey() && !dlg.open) { const y = scrollY; current?.remove(); current = null; render(); scrollTo(0, y); } }, 60000);
+
+// ================= map of the period's events =================
+// MapLibre GL + OpenFreeMap vector tiles (OpenStreetMap data): free, no API key, no cookies.
+// The library (~800 kB) is fetched on first use only. "liberty" reads like Google Maps (yellow main roads,
+// green parks, buildings); "fiord" is its dark counterpart with roads that stand out from the blocks.
+const mapDlg = document.getElementById("mapDlg"), mapCard = document.getElementById("mapCard"), mapMsg = document.getElementById("mapMsg");
+const MAPLIBRE = "https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.min";
+const mapStyle = dark => `https://tiles.openfreemap.org/styles/${dark ? "fiord" : "liberty"}`;
+const TARNOW = [20.9883, 50.0125];  // Rynek, [lon, lat]
+let mapLib = null, map = null, mapDark = null, mapPins = [];
+// Liberty is pale (near-white land, see-through greens). This palette makes the town look like spring and
+// closer to Google Maps: tinted land and buildings so white and yellow roads pop, rich greens, deep blue water.
+const SPRING = {
+  background: {"background-color": "#e9e5d9"},                       // warm sand instead of paper white
+  landuse_residential: {"fill-color": "hsla(36,42%,82%,0.6)"},
+  building: {"fill-color": "#d8cdbb"},
+  "building-3d": {"fill-extrusion-color": "#d8cdbb"},
+  park: {"fill-color": "#9fd98a", "fill-opacity": 1, "fill-outline-color": "#7cc566"},
+  park_outline: {"line-color": "#86cd70"},
+  landcover_wood: {"fill-color": "#86c96c", "fill-opacity": 0.9},
+  landcover_grass: {"fill-color": "#ace08f", "fill-opacity": 0.9},
+  landuse_pitch: {"fill-color": "#94d47e"},
+  landuse_track: {"fill-color": "#94d47e"},
+  landuse_cemetery: {"fill-color": "#a9d494"},
+  landuse_school: {"fill-color": "#efe1ac"},
+  landuse_hospital: {"fill-color": "#f6c9d6"},
+  landcover_sand: {"fill-color": "#f2e09e"},
+  aeroway_fill: {"fill-color": "#dad6ca"},
+  water: {"fill-color": "#4f9fe3"},
+  waterway_river: {"line-color": "#4f9fe3"},
+  waterway_other: {"line-color": "#4f9fe3"},
+  waterway_tunnel: {"line-color": "#4f9fe3"},
+  water_name_point_label: {"text-color": "#1d5c99"},
+  water_name_line_label: {"text-color": "#1d5c99"},
+  waterway_line_label: {"text-color": "#1d5c99"},
+};
+function tuneMap() {
+  if (map.getLayer("poi_transit")) map.setLayoutProperty("poi_transit", "visibility", "none");  // bus stops compete with the pins
+  if (mapDark) return;
+  for (const [id, paint] of Object.entries(SPRING))
+    if (map.getLayer(id)) for (const [k, v] of Object.entries(paint)) map.setPaintProperty(id, k, v);
+}
+function isDark() { return state.theme === "dark" || (state.theme === "system" && matchMedia("(prefers-color-scheme: dark)").matches); }
+function loadMapLib() {
+  return mapLib ||= new Promise((ok, fail) => {
+    const css = Object.assign(document.createElement("link"), {rel: "stylesheet", href: MAPLIBRE + ".css"});
+    const js = Object.assign(document.createElement("script"), {src: MAPLIBRE + ".js"});
+    js.onload = () => ok(window.maplibregl);
+    js.onerror = () => { mapLib = null; js.remove(); fail(new Error("maplibre")); };
+    document.head.append(css, js);
+  });
+}
+function syncMapStyle() {
+  if (!map) return;
+  const d = isDark();
+  if (d !== mapDark) { mapDark = d; map.setStyle(mapStyle(d)); }
+}
+matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", syncMapStyle);
+// What the list shows (period, place filter, categories, search), grouped by map point.
+function mapData() {
+  const [a, b] = state.q ? [todayKey(), todayKey()] : periodRange();
+  const evs = EVENTS.filter(e => overlaps(e, a, b) && visible(e))
+    .sort((x, y) => x.sk < y.sk ? -1 : x.sk > y.sk ? 1 : x.smin - y.smin);
+  const byPt = new Map();
+  for (const e of evs) {
+    if (!e.geo) continue;
+    const k = e.geo[0].toFixed(4) + "," + e.geo[1].toFixed(4);
+    if (!byPt.has(k)) byPt.set(k, {geo: e.geo, evs: []});
+    byPt.get(k).evs.push(e);
+  }
+  const top = xs => { const n = {}; let best = null; for (const x of xs) if (x && (n[x] = (n[x] || 0) + 1) > (n[best] || 0)) best = x; return best; };
+  const places = [...byPt.values()].map(p => ({...p, cat: top(p.evs.map(e => e.cat)) || "inne",
+    name: top(p.evs.map(e => e.loc)) || top(p.evs.map(e => e.town)) || "Miejsce"}));
+  return {a, b, total: evs.length, noGeo: evs.filter(e => !e.geo).length, places};
+}
+function mapTimeLbl(e, a, b) {
+  if (e.ad || inBox(e)) return e.ek > b ? `do ${shortDate(e.ek)}` : e.multi ? `${shortDate(e.sk)}–${shortDate(e.ek)}` : "cały dzień";
+  return (a !== b ? DOW[dow(e.sk)] + " " + dayNum(e.sk) + " · " : "") + hm(e.smin);
+}
+function showPlace(p, pin, d) {
+  mapPins.forEach(m => m.getElement().firstChild.classList.toggle("on", m.getElement().firstChild === pin));
+  const groups = new Map();  // a cinema's screenings of one film share a row with all their times
+  for (const e of p.evs) { if (!groups.has(e.t)) groups.set(e.t, []); groups.get(e.t).push(e); }
+  mapCard.innerHTML = `<div class="mc-h"><span class="ms">location_on</span><div><b>${esc(p.name)}</b><small>${p.evs.length} ${plural(p.evs.length)}</small></div>
+    <button class="icon-btn sl" data-act="cardclose" aria-label="Zamknij"><span class="ms">close</span></button></div>` +
+    [...groups].map(([t, list]) => `<div class="mc-ev" style="${catVars(list[0].cat)}"><span class="ms mc-i" aria-hidden="true">${ICONS[list[0].cat] || "event"}</span>
+      <div><button class="mc-t" data-mid="${esc(list[0].id)}">${esc(t)}</button>
+      <div class="mc-times">${list.map(e => `<button data-mid="${esc(e.id)}">${esc(mapTimeLbl(e, d.a, d.b))}</button>`).join("")}</div></div></div>`).join("");
+  mapCard.hidden = false;
+  mapCard.scrollTop = 0;
+}
+function closePlace() { mapCard.hidden = true; mapPins.forEach(m => m.getElement().firstChild.classList.remove("on")); }
+function drawPins(d) {
+  const ml = window.maplibregl;
+  mapPins.forEach(m => m.remove()); mapPins = [];
+  closePlace();
+  const bounds = new ml.LngLatBounds();
+  // Busiest places last, so their pins sit on top.
+  for (const p of [...d.places].sort((x, y) => x.evs.length - y.evs.length)) {
+    const wrap = document.createElement("div"); wrap.className = "mpin";  // MapLibre positions the wrapper; the pin can scale
+    const n = p.evs.length;
+    wrap.innerHTML = `<button class="pin" style="${catVars(p.cat)}" aria-label="${esc(p.name)}: ${n} ${plural(n)}" title="${esc(p.name)}">
+      <span class="ms" aria-hidden="true">${ICONS[p.cat] || "event"}</span>${n > 1 ? `<b>${n}</b>` : ""}</button>`;
+    wrap.firstChild.addEventListener("click", ev => { ev.stopPropagation(); showPlace(p, wrap.firstChild, d); });
+    mapPins.push(new ml.Marker({element: wrap, anchor: "center"}).setLngLat([p.geo[1], p.geo[0]]).addTo(map));
+    bounds.extend([p.geo[1], p.geo[0]]);
+  }
+  if (d.places.length) map.fitBounds(bounds, {padding: {top: 64, bottom: 64, left: 56, right: 56}, maxZoom: 14, duration: 0});
+  else map.jumpTo({center: TARNOW, zoom: 9.5});
+}
+async function openMap() {
+  const d = mapData();
+  const [a, b] = [d.a, d.b];
+  document.getElementById("mapTitle").textContent = state.q ? `Dziś: „${state.q}”`
+    : a === b ? `${a === todayKey() ? "Dziś, " : ""}${DOW_LONG[dow(a)]} ${dayNum(a)} ${MONTHS_GEN[mon(a)]}` : rangeLabel(a, b);
+  const places = d.places.length;
+  document.getElementById("mapSub").textContent = `${d.total} ${plural(d.total)} · ${places} ${places === 1 ? "miejsce" : places % 10 >= 2 && places % 10 <= 4 && (places % 100 < 12 || places % 100 > 14) ? "miejsca" : "miejsc"}`
+    + (d.noGeo ? ` · ${d.noGeo} bez lokalizacji` : "");
+  mapDlg.classList.remove("closing");
+  if (!mapDlg.open) mapDlg.showModal();
+  mapMsg.hidden = !!map; mapMsg.textContent = "Wczytywanie mapy…";
+  try { await loadMapLib(); }
+  catch { mapMsg.hidden = false; mapMsg.textContent = "Nie udało się wczytać mapy – sprawdź połączenie z internetem."; return; }
+  const ml = window.maplibregl;
+  if (!map) {
+    mapDark = isDark();
+    map = new ml.Map({container: "map", style: mapStyle(mapDark), center: TARNOW, zoom: 10, attributionControl: false,
+                      dragRotate: false, pitchWithRotate: false, touchPitch: false, cooperativeGestures: false});
+    map.touchZoomRotate.disableRotation();
+    map.addControl(new ml.NavigationControl({showCompass: false}), "top-right");
+    map.addControl(new ml.AttributionControl({compact: true}), "bottom-right");
+    map.on("click", closePlace);
+    map.on("style.load", tuneMap);
+    map.once("load", () => { mapMsg.hidden = true; });
+  } else syncMapStyle();
+  map.resize();
+  drawPins(d);
+  if (!d.total) { mapMsg.hidden = false; mapMsg.textContent = "Brak wydarzeń w tym okresie."; }
+  else if (!places) { mapMsg.hidden = false; mapMsg.textContent = "Żadne z wydarzeń nie ma lokalizacji na mapie."; }
+}
+function closeMap() {
+  if (!mapDlg.open || mapDlg.classList.contains("closing")) return;
+  const fin = () => { mapDlg.classList.remove("closing"); mapDlg.close(); };
+  if (reduced()) fin(); else { mapDlg.classList.add("closing"); setTimeout(fin, 210); }
+}
+document.getElementById("mapBtn").onclick = openMap;
+mapDlg.addEventListener("cancel", ev => { ev.preventDefault(); closeMap(); });
+mapDlg.addEventListener("click", ev => {
+  if (ev.target === mapDlg) return closeMap();
+  const m = ev.target.closest("[data-mid]");
+  if (m) return openEvent(m.dataset.mid);
+  const act = ev.target.closest("[data-act]")?.dataset.act;
+  if (act === "mapclose") closeMap(); else if (act === "cardclose") closePlace();
+});
 
 // ================= boot =================
 try {
