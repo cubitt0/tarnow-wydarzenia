@@ -556,7 +556,7 @@ sources:
   # (submissions_csv) is read once per build. A link is kept only when the event's host is a page
   # from docs/sources-catalogue.json (`fb`) or allowed_pages. Both empty: no form, no submissions.
   - id: facebook
-    name: Facebook (wydarzenia)
+    name: Facebook
     type: facebook
     url: https://www.facebook.com/events/
     group: facebook

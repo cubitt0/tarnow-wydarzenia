@@ -66,9 +66,21 @@ def titles_match(a: str, b: str) -> bool:
     return min(len(sa), len(sb)) >= 2 and (sa <= sb or sb <= sa)
 
 
+FB_EVENT = re.compile(r"facebook\.com/events/(?:[^/\s\"']+/)*?(\d{6,})")
+
+
+def fb_events(e: Event) -> set[str]:
+    """Facebook event ids among the event's links: one id is one real-world event."""
+    return {i for r in e.all_sources() for i in FB_EVENT.findall(r.url)}
+
+
 def same_event(a: Event, b: Event) -> bool:
     if a.day != b.day:
         return False
+    # it.tarnow links the organiser's Facebook event and the Facebook source reads it: whatever the
+    # two titles say ("Oczami i sercem - wernisaż…" / "Wernisaż: Oczami i sercem. Dwa spojrzenia…").
+    if fb_events(a) & fb_events(b):
+        return True
     if same_slot(a, b):
         return True
     # Same URL alone proves nothing: AI-extracted events all point at their listing page.
@@ -159,6 +171,8 @@ def is_span(e: Event) -> bool:
 
 def same_span(a: Event, b: Event) -> bool:
     (af, al), (bf, bl) = _first_last(a), _first_last(b)
+    if fb_events(a) & fb_events(b) and not (af > bl or bf > al):
+        return True
     if {r.source_id for r in a.all_sources()} & {r.source_id for r in b.all_sources()}:
         # A daily "what's on" column (halogorlice's "Co gdzie Halo") repeats an ongoing exhibition in
         # every issue, each time starting it on the issue's date. One source otherwise lists different

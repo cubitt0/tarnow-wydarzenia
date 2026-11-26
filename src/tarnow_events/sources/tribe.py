@@ -74,8 +74,9 @@ class TribeSource(Source):
                 return
         if url.rstrip("/") == ev.source.url.rstrip("/"):
             return
-        host = (urlsplit(url).hostname or "").removeprefix("www.")
-        ev.sources = [ev.source, SourceRef(self.cfg.id, f"Strona wydarzenia ({host})", url)]
+        host = (urlsplit(url).hostname or "").removeprefix("www.").removeprefix("m.")
+        name = "Facebook" if host in ("facebook.com", "fb.me", "fb.com") else f"Strona wydarzenia ({host})"
+        ev.sources = [ev.source, SourceRef(self.cfg.id, name, url)]
 
     def _resolve(self, url: str) -> str | None:
         cache = self.__dict__.setdefault("_short", {})

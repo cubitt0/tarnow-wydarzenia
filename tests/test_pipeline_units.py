@@ -45,6 +45,16 @@ def test_dedup_merges_across_sources_and_keeps_all_links():
     assert {r.source_id for r in merged.all_sources()} == {"ebilet", "venue"}
 
 
+def test_same_facebook_event_merges_whatever_the_titles():
+    a = ev("Oczami i sercem - wernisaż malarstwa, ikon i fotografii artystycznej", T, src="facebook",
+           url="https://www.facebook.com/events/29083040651352149/", lat=50.02693, lon=20.99951)
+    b = ev("Wernisaż: Oczami i sercem. Dwa spojrzenia wspólna pasja.", T, src="it",
+           url="https://www.it.tarnow.pl/wydarzenie/wernisaz-oczami-i-sercem/", lat=50.0121, lon=20.9858)
+    b.sources = [b.source, SourceRef("it", "FB", "https://www.facebook.com/events/29083040651352149/?acontext=%7B%7D")]
+    out = deduplicate([a, b], {})
+    assert len(out) == 1 and len(out[0].all_sources()) == 2  # the two Facebook links are one link
+
+
 def test_uids_are_stable_between_runs():
     state: dict = {}
     first = deduplicate([ev("Dziady", T, src="teatr")], state)[0].uid
