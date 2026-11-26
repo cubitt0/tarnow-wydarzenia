@@ -1,4 +1,4 @@
-# Daily build at 12:00 Polish time: fetch every source, write the .ics feeds, publish on GitHub Pages.
+# Daily build around 12:00 Polish time (11:47 + queue): fetch every source, write the .ics feeds, publish on GitHub Pages.
 # Free for public repos. Feeds end up at https://<user>.github.io/<repo>/wszystkie.ics
 name: build-feeds
 
@@ -6,8 +6,9 @@ on:
   schedule:
     # Cron is UTC-only. 12:00 in Warsaw is 10:00 UTC in summer (CEST) and 11:00 UTC in winter (CET):
     # both fire, and the gate job below lets through only the one that is noon in Warsaw.
-    - cron: "0 10 * * *"
-    - cron: "0 11 * * *"
+    # Minute 47, not :00: GitHub queues schedules at the top of the hour longest (runs came ~9 h late).
+    - cron: "47 9 * * *"
+    - cron: "47 10 * * *"
   workflow_dispatch:
   push:
     branches: [main]
@@ -35,7 +36,7 @@ jobs:
         run: |
           offset=$(TZ=Europe/Warsaw date +%z)
           case "${{ github.event_name }}/${{ github.event.schedule }}/$offset" in
-            schedule/"0 10 * * *"/+0200|schedule/"0 11 * * *"/+0100) echo run=true ;;
+            schedule/"47 9 * * *"/+0200|schedule/"47 10 * * *"/+0100) echo run=true ;;
             schedule/*) echo run=false ;;
             *) echo run=true ;;  # manual run or push
           esac >> "$GITHUB_OUTPUT"

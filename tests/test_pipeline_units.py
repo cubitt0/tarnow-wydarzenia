@@ -199,6 +199,23 @@ def test_logo_repeated_across_pages_is_ignored(tmp_path):
     assert a.image is None and b.image == "https://x.pl/poster9.jpg"
 
 
+def test_repeated_event_poster_is_not_a_logo(tmp_path):
+    import json, time
+    from tarnow_events.images import enrich_images, event_key
+    now = time.time()
+    # One exhibition, one page per day (+ a re-added "-2" copy): the same poster on all of them.
+    pages = [f"https://it.pl/wydarzenie/wystawa/2026-11-{d}/" for d in (19, 20, 21, 22)]
+    pages.append("https://it.pl/wydarzenie/wystawa-2/2026-11-23/")
+    cache = {p: {"i": "https://it.pl/wystawa.webp", "t": now, "v": now, "k": []} for p in pages}
+    (tmp_path / "images.json").write_text(json.dumps(cache))
+    a = ev("Wystawa", T, src="it", url=pages[0])
+    enrich_images([a], tmp_path, listing_urls=set())
+    assert a.image == "https://it.pl/wystawa.webp"
+    assert event_key("https://it.pl/wydarzenie/x/2026-11-19/") == event_key("https://it.pl/wydarzenie/x-3/") \
+        == "https://it.pl/wydarzenie/x"
+    assert event_key("https://x.pl/e/1") != event_key("https://x.pl/e/2")
+
+
 def test_dead_cached_image_makes_page_be_read_again(tmp_path, monkeypatch):
     import json, time
     from types import SimpleNamespace

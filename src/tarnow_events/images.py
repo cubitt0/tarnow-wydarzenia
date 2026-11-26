@@ -3,13 +3,15 @@ the picture (og:image & co.) and a ticket-shop link (see tickets.py).
 
 Runs after dedup, so each real-world event is looked up once. Results (including "nothing
 found") are cached for 30 days. A picture that one site returns for 3+ different pages is its
-logo or a default banner, not the event's poster, and is ignored for that site.
+logo or a default banner, not the event's poster, and is ignored for that site. The dated pages
+of one repeated event (Tribe calendars: /wydarzenie/opowiesc-wigilijna-2/2026-12-11/) count as one page.
 """
 
 from __future__ import annotations
 
 import json
 import logging
+import re
 import time
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
@@ -30,6 +32,13 @@ TTL = 30 * 86400
 CHECK_EVERY = 20 * 3600  # a little under a day, so the daily build always re-checks
 SKIP_HOSTS = {"www.facebook.com", "facebook.com", "api.lu.ma", "calendar.google.com"}
 LOGO_REPEATS = 3
+_OCCURRENCE = re.compile(r"(?:-\d+)?(?:/\d{4}-\d{2}-\d{2})?/?$")
+
+
+def event_key(page: str) -> str:
+    """The page without its occurrence date and WordPress's "-2" slug suffix: every show of a
+    repeated event (and its re-added copies) shares one poster, which is not the site's logo."""
+    return _OCCURRENCE.sub("", page)  # query kept: ?id=5 and ?id=6 are different events
 
 
 def page_image(html: str, url: str) -> str | None:
@@ -67,7 +76,7 @@ def enrich_images(events: list[Event], cache_dir: Path, listing_urls: set[str], 
     per_host: dict[str, dict[str, set]] = defaultdict(lambda: defaultdict(set))
     for page, entry in cache.items():
         if entry.get("i"):
-            per_host[urlparse(page).hostname or ""][entry["i"]].add(page)
+            per_host[urlparse(page).hostname or ""][entry["i"]].add(event_key(page))
 
     def is_logo(page: str, img: str) -> bool:
         return len(per_host[urlparse(page).hostname or ""][img]) >= LOGO_REPEATS
@@ -105,7 +114,7 @@ def enrich_images(events: list[Event], cache_dir: Path, listing_urls: set[str], 
             for page in to_check[img]:
                 if dead:  # forget the picture and re-read the page in this run
                     cache[page].update(i=None, t=0)
-                    per_host[urlparse(page).hostname or ""][img].discard(page)
+                    per_host[urlparse(page).hostname or ""][img].discard(event_key(page))
                 else:
                     cache[page]["v"] = now
 
@@ -136,7 +145,7 @@ def enrich_images(events: list[Event], cache_dir: Path, listing_urls: set[str], 
         for page, entry in pool.map(read, todo):
             cache[page] = entry
             if entry["i"]:
-                per_host[urlparse(page).hostname or ""][entry["i"]].add(page)
+                per_host[urlparse(page).hostname or ""][entry["i"]].add(event_key(page))
 
     filled = found = 0
     for ev in events:
