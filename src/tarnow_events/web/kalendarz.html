@@ -949,7 +949,7 @@ function imgFail(img) {
 }
 function priceHTML(p) {
   if (!p) return "";
-  if (/^(0([.,]0+)?\s*(zł|pln)?|free|bezp[łl]at|wst[eę]p wolny|udzia[łl] bezp|darmow)/i.test(p.trim()))
+  if (/^(0([.,]0+)?\s*(zł|pln)?$|free|bezp[łl]at|wst[eę]p (wolny|bezp|darm)|wej[sś]cie (wolne|bezp|darm)|wolny|udzia[łl] bezp|darmow)/i.test(p.trim()))
     return `<span class="price free" title="${esc(p)}"><span class="ms">redeem</span>Bezpłatne</span>`;
   const t = p.replace(/,00/g, "").replace(/\s*pln/i, " zł").replace(/(\d)\s*zł\s*–\s*/g, "$1–");
   return `<span class="price" title="${esc(p)}"><span class="ms">confirmation_number</span>${esc(t)}</span>`;

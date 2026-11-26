@@ -20,7 +20,7 @@ from .geo import Geocoder, canonical_town, correct_tarnow, distance_from_tarnow,
 from .ical_out import build_calendar
 from .models import CATEGORIES, TZ, Event
 from .series import collapse_series, is_long
-from .tickets import free_ticket
+from .tickets import free_ticket, infer_free
 from .seo import home_list, write_seo
 from .ads import apply_ads
 from .site import render_index
@@ -126,6 +126,7 @@ def run(settings: Settings, only: set[str] | None = None, use_ai: bool = True) -
             continue
         ev.town = correct_tarnow(canonical_town(ev.town), " ".join(p for p in (ev.location_name, ev.address) if p))
         infer_time(ev)
+        infer_free(ev)
         if (ev.end or ev.start) < lo or ev.start > hi:
             dropped["window"] += 1
             continue

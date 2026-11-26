@@ -35,6 +35,34 @@ STOP = {"koncert", "koncertu", "spektakl", "tarnow", "tarnowie", "tarnowa", "wys
         "zapraszamy", "teatr", "teatru", "bilety", "dzieci", "dzien", "wieczor", "edycja", "muzyki", "orkiestra"}
 
 
+# "Wstęp wolny", "Udział w zawodach jest bezpłatny", "bezpłatne zajęcia", "darmowe wejściówki"…
+FREE = re.compile(
+    r"\b(?:wst[eę]p|wej[sś]cie|udzia[łl])\b[\s:–-]*(?:\w+\s+){0,3}?(?:wolny|wolne|bezp[łl]atn\w*|darmow\w*)"
+    r"|\b(?:bezp[łl]atn|darmow)\w*\s+(?:wst[eę]p|wej[sś]ci\w*|udzia[łl]|zaj[eę]cia|warsztaty|koncert|spektakl"
+    r"|seans|pokaz|wydarzeni\w*|impreza|spotkanie|wyk[łl]ad)"
+    r"|\bfree (?:entry|admission)\b",
+    re.I,
+)
+# …but not when it is free only for some ("wstęp wolny dla dzieci do lat 3") or tickets cost money.
+FREE_FOR_SOME = re.compile(r"^\W*(?:\w+\s+){0,3}?(?:do\s+lat|dla\s+(?:posiadacz|cz[łl]onk)|z\s+kart|po\s+okazaniu|za\s+okazaniem)", re.I)
+PAID = re.compile(r"\d+(?:[.,]\d+)?\s*(?:zł|pln)\b|\bbilet\w*\s*:?\s*\d", re.I)
+
+
+def says_free(text: str | None) -> bool:
+    """The text says entry is free, for everyone, and names no price."""
+    if not text or PAID.search(text):
+        return False
+    return any(not FREE_FOR_SOME.match(text[m.end():m.end() + 60]) for m in FREE.finditer(text))
+
+
+def infer_free(ev: Event, text: str | None = None) -> bool:
+    """No price from the source, but the description says "wstęp wolny": the event is free."""
+    if ev.price or not says_free(text if text is not None else f"{ev.title}\n{ev.description or ''}"):
+        return False
+    ev.price = "Wstęp wolny"
+    return True
+
+
 def is_ticket_url(url: str | None) -> bool:
     try:
         parts = urlsplit(url or "")

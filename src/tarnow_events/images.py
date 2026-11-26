@@ -1,5 +1,9 @@
 """Read the events' own pages once and take from them what the sources did not give us:
-the picture (og:image & co.) and a ticket-shop link (see tickets.py).
+the picture (og:image & co.), a ticket-shop link (see tickets.py), and from the page's text the
+start time of an "all-day" event and whether entry is free. A news listing often shows only the
+article's lead ("Dziś spotkanie Mamoteki"); the hour and "Wstęp wolny" are in the article itself.
+Text hints are used only when the page is about this one event: no other event links to it and its
+heading shares a word with the event's title.
 
 Runs after dedup, so each real-world event is looked up once. Results (including "nothing
 found") are cached for 30 days. A picture that one site returns for 3+ different pages is its
@@ -19,12 +23,14 @@ from pathlib import Path
 from urllib.parse import urljoin, urlparse
 
 from selectolax.lexbor import LexborHTMLParser as HTMLParser
+from unidecode import unidecode
 
 from . import http
 from .models import Event
 from .sources.base import is_machine_url
 from .sources.jsonld import extract_jsonld_events
-from .tickets import choose_ticket, free_ticket, is_ticket_url, page_ticket_candidates
+from .tickets import STOP, choose_ticket, free_ticket, is_ticket_url, page_ticket_candidates, says_free
+from .timeinfer import apply_time, eligible, time_candidates
 
 log = logging.getLogger(__name__)
 
@@ -57,6 +63,46 @@ def page_image(html: str, url: str) -> str | None:
         if isinstance(img, str) and img:
             return urljoin(url, img)
     return None
+
+
+# Not the page's own content: menus, sidebars with other articles, cookie bars.
+TEXT_DROP = "script, style, noscript, svg, iframe, form, nav, footer, header, aside, template"
+TEXT_CHROME = re.compile(r"sidebar|widget|cookie|breadcrumb|related|polecane|social|menu|comment|komentarz", re.I)
+
+
+def page_text(html: str) -> tuple[str, str]:
+    """(heading, main text) of an event's page, without menus and sidebars."""
+    tree = HTMLParser(html)
+    heading = ""
+    for sel, attr in (('meta[property="og:title"]', "content"), ("h1", None), ("title", None)):
+        node = tree.css_first(sel)
+        heading = (node.attributes.get(attr) or "") if (node and attr) else (node.text() if node else "")
+        if heading.strip():
+            break
+    for n in tree.css(TEXT_DROP):
+        n.decompose()
+    for n in reversed(tree.css("[class], [id]")):  # innermost first: no touching a removed node's children
+        attrs = n.attributes
+        if n.tag not in ("html", "body", "main", "article") and \
+                TEXT_CHROME.search(f"{attrs.get('class') or ''} {attrs.get('id') or ''}"):
+            n.decompose()
+    root = tree.body or tree.root
+    return " ".join(heading.split()), " ".join((root.text(separator=" ") if root else "").split())
+
+
+def page_hints(html: str) -> dict:
+    """Cache fields: h = start times the page states (cued ones only), f = says entry is free, n = heading."""
+    heading, text = page_text(html)
+    return {"h": time_candidates(text, bare=False), "f": says_free(text), "n": heading[:200]}
+
+
+def _stems(title: str) -> set[str]:
+    # Five-letter stems, so "Mamoteki" in the title matches "Mamoteka" on the page.
+    return {w[:5] for w in re.findall(r"[a-z0-9]+", unidecode(title).lower()) if len(w) >= 5 and w not in STOP}
+
+
+def about(ev: Event, heading: str | None) -> bool:
+    return bool(heading) and bool(_stems(ev.title) & _stems(heading))
 
 
 def enrich_images(events: list[Event], cache_dir: Path, listing_urls: set[str], max_fetches: int = 250,
@@ -96,6 +142,15 @@ def enrich_images(events: list[Event], cache_dir: Path, listing_urls: set[str], 
         need_img = not ev.image or is_logo(ev.source.url, ev.image)
         return need_img, not ev.tickets and not ev.cancelled
 
+    def wants_text(ev: Event) -> bool:
+        return not ev.cancelled and (eligible(ev) or not ev.price)
+
+    # A page several events link to (a daily digest, a programme) cannot tell whose time it states.
+    linked: dict[str, int] = defaultdict(int)
+    for ev in events:
+        for page in {ref.url for ref in ev.all_sources()}:
+            linked[page] += 1
+
     # Sites rename re-uploaded pictures (BWA adds a new hash), so a cached URL can start to 404
     # within the 30 days. Check the pictures in use once a day; a dead one sends its page to be re-read.
     to_check: dict[str, list[str]] = defaultdict(list)
@@ -122,24 +177,29 @@ def enrich_images(events: list[Event], cache_dir: Path, listing_urls: set[str], 
     todo: list[str] = []
     for ev in events:
         need_img, need_tk = wants(ev)
-        if not (need_img or need_tk):
+        need_text = wants_text(ev)
+        if not (need_img or need_tk or need_text):
             continue
         for ref in ev.all_sources():
             page = ref.url
             if not readable(page) or page in todo:
                 continue
             entry = cache.get(page)
-            if entry is None or now - entry["t"] > TTL or (need_tk and "k" not in entry):
+            # Entries from before text hints were read have no "h": their pages get one more look.
+            if entry is None or now - entry["t"] > TTL or (need_tk and "k" not in entry) \
+                    or (need_text and "h" not in entry and linked[page] == 1):
                 if len(todo) < max_fetches:
                     todo.append(page)
 
     def read(page: str) -> tuple[str, dict]:
         try:
             html = http.get(page, retries=0).text
-            return page, {"i": page_image(html, page), "t": now, "k": page_ticket_candidates(html, page)}
+            return page, {"i": page_image(html, page), "t": now, "k": page_ticket_candidates(html, page),
+                          **page_hints(html)}
         except Exception:
             old = cache.get(page, {})
-            return page, {"i": old.get("i"), "t": now, "k": old.get("k", [])}
+            return page, {"i": old.get("i"), "t": now, "k": old.get("k", []),
+                          **{k: old[k] for k in ("h", "f", "n") if k in old}}
 
     with ThreadPoolExecutor(8) as pool:
         for page, entry in pool.map(read, todo):
@@ -147,7 +207,7 @@ def enrich_images(events: list[Event], cache_dir: Path, listing_urls: set[str], 
             if entry["i"]:
                 per_host[urlparse(page).hostname or ""][entry["i"]].add(event_key(page))
 
-    filled = found = 0
+    filled = found = timed = free_entry = 0
     for ev in events:
         need_img, need_tk = wants(ev)
         if need_img:
@@ -162,5 +222,13 @@ def enrich_images(events: list[Event], cache_dir: Path, listing_urls: set[str], 
             if need_tk and not ev.tickets and entry.get("k"):
                 ev.tickets = choose_ticket(ev, entry["k"])
                 found += bool(ev.tickets)
+            if linked[ref.url] == 1 and about(ev, entry.get("n")):
+                if eligible(ev) and len(entry.get("h") or []) == 1:
+                    timed += apply_time(ev, entry["h"][0])
+                if not ev.price and entry.get("f") and not ev.tickets:
+                    ev.price = "Wstęp wolny"
+                    free_entry += 1
     path.write_text(json.dumps(cache))
-    return {"image_pages_fetched": len(todo), "images_filled": filled, "dead_images": dead_images, "tickets_from_sources": free, "tickets_from_pages": found}
+    return {"image_pages_fetched": len(todo), "images_filled": filled, "dead_images": dead_images,
+            "tickets_from_sources": free, "tickets_from_pages": found, "times_from_pages": timed,
+            "free_from_pages": free_entry}

@@ -106,10 +106,13 @@ def test_facebook_parser():
     html = (
         '<script type="application/json">{"x":{"id":"123456789","name":"Quiz","start_timestamp":1796500000,'
         '"event_place":{"name":"Pub X","location":{"latitude":50.01,"longitude":20.98}},'
-        '"event_description":{"text":"Opis"}}, "y":{"id":"999999999","name":"Other","start_timestamp":1}}</script>'
+        '"event_description":{"text":"Opis"},'
+        '"event_buy_ticket_url":"https://l.facebook.com/l.php?u=https%3A%2F%2Fbiletyna.pl%2Fquiz%2F1&h=x"},'
+        ' "y":{"id":"999999999","name":"Other","start_timestamp":1}}</script>'
     )
     d = parse_event_page(html, "123456789")
     assert d["title"] == "Quiz" and d["place"] == "Pub X" and d["lat"] == 50.01
+    assert d["tickets"] == "https://biletyna.pl/quiz/1"
     assert find_event_ids("see https://www.facebook.com/events/foo/bar/123456789/?x=1") == {"123456789"}
 
 
@@ -177,6 +180,55 @@ def test_time_is_read_from_description():
     assert infer_time(b) and b.start.hour == 18 and b.end.hour == 21
     c = ev("Warsztaty", T.replace(hour=0), all_day=True); c.description = "Grupa I 10:00, grupa II 12:00"
     assert not infer_time(c) and c.all_day  # ambiguous: stays all-day
+    d = ev("Mamoteka", T.replace(hour=0), all_day=True); d.description = "Spotkanie rozpocznie się o godz. 17. Wstęp wolny."
+    assert infer_time(d) and (d.start.hour, d.start.minute) == (17, 0)
+    e = ev("Targ", T.replace(hour=0), all_day=True); e.description = "Targ będzie czynny od godz. 9 do 14."
+    assert infer_time(e) and e.start.hour == 9 and e.end.hour == 14
+    f = ev("Lodowisko", T.replace(hour=0), all_day=True); f.description = "Otwarte do godz. 21."
+    assert not infer_time(f) and f.all_day  # when it closes, not when it starts
+    g = ev("Miasteczko Mikołaja", T.replace(hour=0), all_day=True)
+    g.description = "Uzdrowisko, godz: 09:00. Basen jest czynny w weekendy w godz. 11–21."
+    assert not infer_time(g) and g.all_day  # the pool's opening hours are not the event's
+    h = ev("Debata", T.replace(hour=0), all_day=True); h.description = "Wstęp wolny. Początek o 10:00."
+    assert infer_time(h) and h.start.hour == 10
+
+
+def test_free_entry_is_read_from_text():
+    from tarnow_events.tickets import infer_free, says_free
+    for text in ("Wstęp wolny.", "🎟️ WSTĘP WOLNY 🎟️", "Udział w zawodach jest bezpłatny.", "Wstęp: wolny",
+                 "Bezpłatne zajęcia dla dzieci", "Darmowe wejściówki dostępne są w szkołach."):
+        assert says_free(text), text
+    for text in ("Wstęp wolny dla dzieci do lat 3.", "Bilety: 20 zł, wstęp wolny dla seniorów",
+                 "Odbierz bezpłatną puszkę napoju", "Wstęp wolny dla posiadaczy karty", None):
+        assert not says_free(text), text
+    a = ev("Wernisaż", T); a.description = "Termin: 19 listopada, godzina 17:00\n\nWstęp wolny."
+    assert infer_free(a) and a.price == "Wstęp wolny"
+    b = ev("Koncert", T); b.price = "40 zł"; b.description = "Wstęp wolny"
+    assert not infer_free(b) and b.price == "40 zł"  # the source's price wins
+
+
+ARTICLE = """<html><head><meta property="og:title" content="Dziś kolejne spotkanie Mamoteki - TARNÓW"></head><body>
+<header><a href="/">Tarnów</a> godz. 8:00-15:30 urząd czynny</header>
+<main><section><aside>WARTO PRZECZYTAĆ <a href="/x">Koncert o godz. 19</a></aside>
+<div>26.11.2026, 10:08</div><p>Już dzisiaj odbędzie się kolejne spotkanie Mamoteki.</p>
+<p>Spotkanie rozpocznie się o godz. 17. Wstęp wolny.</p></section></main></body></html>"""
+
+
+def test_time_and_free_entry_from_the_events_own_page(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    from tarnow_events import http, images
+    monkeypatch.setattr(http, "get", lambda url, **kw: SimpleNamespace(text=ARTICLE))
+    assert images.page_hints(ARTICLE) == {"h": ["17:00"], "f": True, "n": "Dziś kolejne spotkanie Mamoteki - TARNÓW"}
+    a = ev("Spotkanie Mamoteka", T.replace(hour=0), src="tarnow", url="https://tarnow.pl/mamoteka", all_day=True)
+    # A daily digest page two events link to: whose hour is it? Not used.
+    b = ev("Spotkanie Mamoteki", T.replace(hour=0), src="d", url="https://d.pl/dzis", all_day=True)
+    c = ev("Kiermasz ciast", T.replace(hour=0), src="d", url="https://d.pl/dzis", all_day=True)
+    # A page whose heading is about something else is not this event's page.
+    d = ev("Turniej szachowy", T.replace(hour=0), src="x", url="https://x.pl/mamoteka", all_day=True)
+    stats = images.enrich_images([a, b, c, d], tmp_path, listing_urls=set())
+    assert not a.all_day and (a.start.hour, a.start.minute) == (17, 0) and a.price == "Wstęp wolny"
+    assert b.all_day and c.all_day and d.all_day and not (b.price or c.price or d.price)
+    assert stats["times_from_pages"] == 1 and stats["free_from_pages"] == 1
 
 
 def test_page_image_prefers_og_image():
@@ -190,8 +242,8 @@ def test_logo_repeated_across_pages_is_ignored(tmp_path):
     import json, time
     from tarnow_events.images import enrich_images
     now = time.time()
-    cache = {f"https://x.pl/e/{i}": {"i": "https://x.pl/logo.png", "t": now, "k": []} for i in range(3)}
-    cache["https://x.pl/e/9"] = {"i": "https://x.pl/poster9.jpg", "t": now, "k": []}
+    cache = {f"https://x.pl/e/{i}": {"i": "https://x.pl/logo.png", "t": now, "k": [], "h": []} for i in range(3)}
+    cache["https://x.pl/e/9"] = {"i": "https://x.pl/poster9.jpg", "t": now, "k": [], "h": []}
     (tmp_path / "images.json").write_text(json.dumps(cache))
     a = ev("A", T, src="x", url="https://x.pl/e/1")
     b = ev("B", T, src="x", url="https://x.pl/e/9")
@@ -206,7 +258,7 @@ def test_repeated_event_poster_is_not_a_logo(tmp_path):
     # One exhibition, one page per day (+ a re-added "-2" copy): the same poster on all of them.
     pages = [f"https://it.pl/wydarzenie/wystawa/2026-11-{d}/" for d in (19, 20, 21, 22)]
     pages.append("https://it.pl/wydarzenie/wystawa-2/2026-11-23/")
-    cache = {p: {"i": "https://it.pl/wystawa.webp", "t": now, "v": now, "k": []} for p in pages}
+    cache = {p: {"i": "https://it.pl/wystawa.webp", "t": now, "v": now, "k": [], "h": []} for p in pages}
     (tmp_path / "images.json").write_text(json.dumps(cache))
     a = ev("Wystawa", T, src="it", url=pages[0])
     enrich_images([a], tmp_path, listing_urls=set())
@@ -222,8 +274,8 @@ def test_dead_cached_image_makes_page_be_read_again(tmp_path, monkeypatch):
     from tarnow_events import http, images
     now = time.time()
     (tmp_path / "images.json").write_text(json.dumps({
-        "https://x.pl/e/1": {"i": "https://x.pl/old-hash1.jpg", "t": now - 86400, "k": []},
-        "https://x.pl/e/2": {"i": "https://x.pl/ok.jpg", "t": now - 86400, "k": []},
+        "https://x.pl/e/1": {"i": "https://x.pl/old-hash1.jpg", "t": now - 86400, "k": [], "h": []},
+        "https://x.pl/e/2": {"i": "https://x.pl/ok.jpg", "t": now - 86400, "k": [], "h": []},
     }))
     monkeypatch.setattr(http, "gone", lambda url: "old-hash" in url)
     page = '<meta property="og:image" content="/new-hash2.jpg">'

@@ -19,6 +19,7 @@ import logging
 import re
 import time
 from typing import Any
+from urllib.parse import parse_qs, urlsplit
 
 from .. import http
 from ..submissions import FILE as LEDGER_FILE
@@ -126,7 +127,18 @@ def parse_event_page(html: str, event_id: str) -> dict | None:
         "online": bool(first("is_online")),
         "cancelled": bool(first("is_canceled")),
         "hosts": hosts,
+        "tickets": _ticket_url(first("event_buy_ticket_url")),
     }
+
+
+def _ticket_url(url: Any) -> str | None:
+    """The event's "Buy tickets" link, unwrapped from Facebook's l.facebook.com redirect."""
+    if not isinstance(url, str) or not url.startswith("http"):
+        return None
+    parts = urlsplit(url)
+    if parts.hostname in ("l.facebook.com", "lm.facebook.com"):
+        url = (parse_qs(parts.query).get("u") or [""])[0]
+    return url if url.startswith("http") else None
 
 
 class FacebookSource(Source):
@@ -244,7 +256,7 @@ class FacebookSource(Source):
     def _event(self, event_id: str, data: dict):
         if data["online"]:
             return None
-        return self.make_event(
+        ev = self.make_event(
             title=data["title"],
             start=data["start"],
             end=data["end"],
@@ -258,3 +270,6 @@ class FacebookSource(Source):
             image=data["image"],
             cancelled=data["cancelled"],
         )
+        if ev:
+            ev.tickets = data.get("tickets")  # absent from submissions accepted before it was read
+        return ev
