@@ -552,6 +552,9 @@ sources:
   # ─────────────────────────── FACEBOOK ───────────────────────────
   # Page event lists need a login, so only single event permalinks work. Links found in any
   # source above are followed automatically; add more by hand under `events:`.
+  # Visitors send links through a Google Form (form_url); its Sheet published as CSV
+  # (submissions_csv) is read once per build. A link is kept only when the event's host is a page
+  # from docs/sources-catalogue.json (`fb`) or allowed_pages. Both empty: no form, no submissions.
   - id: facebook
     name: Facebook (wydarzenia)
     type: facebook
@@ -560,3 +563,13 @@ sources:
     town: Tarnów
     priority: 50
     events: []
+    form_url: https://forms.gle/nUEmBWzEhKBGB4ym6
+    submissions_csv: https://docs.google.com/spreadsheets/d/e/2PACX-1vTinr9pCc0JhgKEj9dQClXisiIiacE7e8-M2fDjiDueE17DnhdydytiglimNGVbNuXVzkb7mPhUVkHw/pub?gid=1464273150&single=true&output=csv
+    submissions_per_build: 20
+    # Extra pages beyond the catalogue's one per source: second official pages of the same organiser.
+    allowed_pages:
+      - https://www.facebook.com/profile.php?id=109362278445622   # Gmina Lisia Góra (older page)
+      - https://www.facebook.com/profile.php?id=1242587379091451  # MOSiR Dębica (older page)
+      - https://www.facebook.com/zsmuzycznychtarnow               # Zespół Szkół Muzycznych Tarnów (second page)
+      - https://www.facebook.com/profile.php?id=100090569562290   # Diecezjalne Studium Organistowskie (Tarnów)
+      - https://www.facebook.com/rdnnowysacz                      # Radio RDN Nowy Sącz edition

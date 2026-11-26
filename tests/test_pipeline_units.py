@@ -348,7 +348,8 @@ def test_seo_pages_sitemap_and_jsonld(tmp_path):
     assert ld["startDate"] == "2026-12-05T19:00:00+01:00"
     assert f'href="/{pages[b.uid]}"' in html  # same-day events link to each other
     sitemap = (tmp_path / "sitemap.xml").read_text()
-    assert sitemap.count("<url>") == 5 and "Było" not in sitemap
+    assert sitemap.count("<url>") == 4 and "Było" not in sitemap and "/wydarzenia/" not in sitemap  # home, zrodla, 2 events
+    assert not (tmp_path / "wydarzenia").exists() and 'href="/#dzien=2026-12-05"' in html
     assert "Sitemap: https://example.pl/sitemap.xml" in (tmp_path / "robots.txt").read_text()
     assert 'name="robots" content="noindex"' in (tmp_path / "404.html").read_text()
 
@@ -612,3 +613,94 @@ def test_every_page_has_a_preview_image():
     assert 'name="twitter:card" content="summary_large_image"' in plain
     poster = _page(base, "wydarzenie/y/", "Spektakl", "Opis", "<p>y</p>", image="https://teatr.pl/plakat.jpg")
     assert 'property="og:image" content="https://teatr.pl/plakat.jpg"' in poster and "og-image.png" not in poster
+
+
+def test_feeds_per_region_and_kind_for_the_subscribe_wizard(tmp_path):
+    import json
+    from tarnow_events.config import Settings, SourceConfig
+    from tarnow_events.pipeline import write_outputs
+    settings = Settings(root=tmp_path, out_dir=tmp_path / "out", cache_dir=tmp_path / "cache", sources_file=tmp_path / "s.yaml",
+                        gemini_api_key=None, gemini_models=[], ai_max_calls=0, ai_daily_limit=0, radius_km=50,
+                        days_back=1, days_ahead=60, public_base_url="https://x.pl")
+    city = ev("Koncert w mieście", T, src="a", url="https://a.pl/1", lat=50.0125, lon=20.9886)
+    city.categories, city.uid = ["koncerty"], "u1"
+    village = ev("Koncert na wsi", T, src="b", url="https://b.pl/1", town="Dębica", lat=50.05, lon=21.41)
+    village.categories, village.uid = ["koncerty"], "u2"
+    configs = [SourceConfig(id="a", name="Źródło A", type="ics", url="https://a.pl/", group="kultura"),
+               SourceConfig(id="b", name="Źródło B", type="ics", url="https://b.pl/", group="region"),
+               SourceConfig(id="c", name="Puste", type="ics", url="https://c.pl/", group="media")]
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs" / "sources-catalogue.json").write_text(json.dumps([
+        {"n": "Klub X", "g": "lokale", "t": "Tarnów", "u": "https://x.pl", "s": "tylko FB/IG", "o": "English note"},
+        {"n": "Portal Y", "g": "media", "u": "https://y.pl", "s": "odrzucone", "o": "Site down.", "r": "Strona nie działa."},
+        {"n": "Gmina Z", "g": "region", "s": "planowane", "r": "Do zrobienia."},
+        {"n": "Aktywne W", "g": "kultura", "s": "aktywne"}]))
+    write_outputs(settings, [city, village], configs, {"a": {"ok": True}, "b": {"ok": False, "error": "x"}})
+    out = settings.out_dir
+    assert b"Koncert w mie" in (out / "region/tarnow/koncerty.ics").read_bytes()
+    assert b"Koncert na wsi" not in (out / "region/tarnow/koncerty.ics").read_bytes()
+    assert b"Koncert na wsi" in (out / "region/okolice/koncerty.ics").read_bytes()
+    cal = json.loads((out / "calendar.json").read_text())
+    by_path = {f["path"]: f for f in cal["feeds"]}
+    assert by_path["region/okolice/koncerty.ics"] | {} == {"path": "region/okolice/koncerty.ics", "count": 1, "group": "region",
+                                                            "region": "okolice", "cat": "koncerty",
+                                                            "name": by_path["region/okolice/koncerty.ics"]["name"]}
+    assert by_path["tarnow.ics"]["region"] == "tarnow" and by_path["kategoria/koncerty.ics"]["region"] == "all"
+    assert by_path["zrodlo/a.ics"]["label"] == "Źródło A" and by_path["zrodlo/a.ics"]["sgroup"] == "kultura"
+    assert "zrodlo/c.ics" not in by_path  # nothing upcoming: not offered
+    assert "Google Calendar" in cal["howto"]
+    page = (out / "zrodla.html").read_text()
+    assert "Gminy i miasta w okolicy" in page and "favHTML" in page and "z błędem" in page and ".ics" not in page
+    assert "Strona nie działa." in page and "Site down." not in page and "Tylko Facebook lub Instagram" in page
+    assert "English note" not in page and "Gmina Z" in page and "Aktywne W" not in page
+    assert [a["name"] for a in cal["apps"]][:2] == ["Google Calendar", "Apple Calendar"]
+
+
+def test_archive_keeps_past_pages_and_tells_removed_from_source_down(tmp_path):
+    import re
+
+    from tarnow_events import archive
+    from tarnow_events.seo import write_seo
+
+    def mk(title, start, src, uid):
+        e = ev(title, start, src=src)
+        e.uid, e.categories, e.location_name = uid, ["koncerty"], "Hala"
+        return e
+
+    held = mk("Koncert Kult", T, "a", "held@x")
+    held.tickets = "https://bilety.pl/kult"
+    dropped = mk("Spektakl", T + timedelta(days=5), "b", "dropped@x")
+    unread = mk("Wystawa", T + timedelta(days=5), "c", "unread@x")
+    moved = mk("Jarmark", T + timedelta(days=3), "a", "moved@x")
+    later = mk("Koncert Dżem", T + timedelta(days=9), "a", "later@x")
+    arch: dict = {}
+    first = write_seo(tmp_path, "https://example.pl", [held, dropped, unread, moved, later], T - timedelta(days=1), arch)
+
+    # Next run, after the concert: the play is no longer listed by its (working) source, the exhibition's
+    # source is down, the fair moved by a day.
+    moved.start += timedelta(days=1)
+    now = T + timedelta(days=1)
+    archive.save(arch, tmp_path / "a" / archive.FILE)
+    (tmp_path / "broken.gz").write_text("<html>404</html>")  # a failed download: the other copy is used
+    arch = archive.load(tmp_path / "missing.gz", tmp_path / "broken.gz", tmp_path / "a" / archive.FILE)
+    pages = write_seo(tmp_path, "https://example.pl", [moved, later], now, arch, fetched={"a", "b"})
+
+    past = (tmp_path / first["held@x"] / "index.html").read_text()
+    assert "już się odbyło" in past and 'content="noindex"' not in past and "Kup bilet" not in past
+    assert '"@type":"Event"' in past and "offers" not in past
+    assert f'href="/{pages["later@x"]}"' in past and "Nadchodzące wydarzenia" in past  # somewhere to go instead
+    gone = (tmp_path / first["dropped@x"] / "index.html").read_text()
+    assert "nie ma już w kalendarzu" in gone and 'content="noindex"' in gone and '"@type":"Event"' not in gone
+    kept = (tmp_path / first["unread@x"] / "index.html").read_text()
+    assert "nie ma już" not in kept and "już się odbyło" not in kept and 'content="noindex"' not in kept
+    assert pages["moved@x"] != first["moved@x"]
+    old = (tmp_path / first["moved@x"] / "index.html").read_text()
+    assert re.search(rf'http-equiv="refresh" content="0; url=/{re.escape(pages["moved@x"])}"', old)
+    sitemap = (tmp_path / "sitemap.xml").read_text()
+    assert pages["later@x"] in sitemap and first["held@x"] not in sitemap and first["dropped@x"] not in sitemap
+
+    # A title fixed by the source keeps the address; a year on, the archive lets the concert go.
+    later.title = "Koncert zespołu Dżem"
+    assert write_seo(tmp_path, "https://example.pl", [later], now, arch)["later@x"] == pages["later@x"]
+    write_seo(tmp_path, "https://example.pl", [later], T + timedelta(days=367), arch)
+    assert "held@x" not in arch and not (tmp_path / first["held@x"]).exists()

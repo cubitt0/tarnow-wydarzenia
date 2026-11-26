@@ -7,11 +7,14 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict
 from datetime import datetime, timedelta
 from pathlib import Path
+from html import escape
 
+from . import archive
 from .ai import gemini
 from .categorize import categorize, is_junk
 from .config import Settings, SourceConfig, load_sources
 from .dedup import deduplicate
+from .howto import APPS, app_icon, howto_html
 from .images import enrich_images
 from .geo import Geocoder, canonical_town, correct_tarnow, distance_from_tarnow, nearest_town, norm_town
 from .ical_out import build_calendar
@@ -223,25 +226,45 @@ def write_outputs(settings: Settings, events: list[Event], configs: list[SourceC
 
     feeds: list[dict] = []
 
-    def feed(path: str, name: str, desc: str, evs: list[Event], group: str) -> None:
+    def feed(path: str, name: str, desc: str, evs: list[Event], group: str, **meta) -> None:
+        """meta (for the subscribe wizard and zrodla.html): region, cat, or src/site/sgroup/label for a source."""
         (out / path).write_bytes(build_calendar(name, desc, evs))
-        feeds.append({"path": path, "name": name, "count": len(evs), "group": group})
+        feeds.append({"path": path, "name": name, "count": len(evs), "group": group, **meta})
 
     radius = int(settings.radius_km)
+    regions = {"all": f"Tarnów i okolice ({radius} km)", "tarnow": "Tarnów – miasto", "okolice": f"Okolice Tarnowa ({radius} km)"}
+
+    def in_region(e: Event, region: str) -> bool:
+        return region == "all" or is_tarnow(e) == (region == "tarnow")
+
     # Multi-week exhibitions would sit as all-day banners on every day of the main feeds;
     # they get their own feed (and stay in the category feeds).
     short = [e for e in events if not is_long(e) and e.in_main]
-    feed("wszystkie.ics", "Tarnów i okolice – wszystko", f"Wszystkie wydarzenia: Tarnów + {radius} km", short, "main")
-    feed("tarnow.ics", "Tarnów – miasto", "Wydarzenia w granicach Tarnowa", [e for e in short if is_tarnow(e)], "main")
+    long_ = [e for e in events if is_long(e)]
+    feed("wszystkie.ics", "Tarnów i okolice – wszystko", f"Wszystkie wydarzenia: Tarnów + {radius} km", short, "main",
+         region="all")
+    feed("tarnow.ics", "Tarnów – miasto", "Wydarzenia w granicach Tarnowa", [e for e in short if is_tarnow(e)], "main",
+         region="tarnow")
     feed("okolice.ics", f"Okolice Tarnowa ({radius} km)", "Wydarzenia poza Tarnowem",
-         [e for e in short if not is_tarnow(e)], "main")
+         [e for e in short if not is_tarnow(e)], "main", region="okolice")
     feed("dlugie.ics", "Tarnów i okolice – wystawy i wydarzenia wielodniowe", "Trwające dłużej niż tydzień",
-         [e for e in events if is_long(e)], "main")
+         long_, "main", region="all", cat="dlugie")
     for slug, label in CATEGORIES.items():
-        feed(f"kategoria/{slug}.ics", f"Tarnów: {label}", label, [e for e in events if slug in e.categories], "category")
+        feed(f"kategoria/{slug}.ics", f"Tarnów: {label}", label, [e for e in events if slug in e.categories], "category",
+             region="all", cat=slug)
+    # The same per region: region/tarnow/koncerty.ics, region/okolice/dlugie.ics …
+    for region in ("tarnow", "okolice"):
+        (out / "region" / region).mkdir(parents=True, exist_ok=True)
+        rname = regions[region]
+        feed(f"region/{region}/dlugie.ics", f"{rname} – wystawy i wydarzenia wielodniowe", "Trwające dłużej niż tydzień",
+             [e for e in long_ if in_region(e, region)], "region", region=region, cat="dlugie")
+        for slug, label in CATEGORIES.items():
+            feed(f"region/{region}/{slug}.ics", f"{rname}: {label}", label,
+                 [e for e in events if slug in e.categories and in_region(e, region)], "region", region=region, cat=slug)
     for cfg in configs:
         evs = [e for e in events if any(r.source_id == cfg.id for r in e.all_sources())]
-        feed(f"zrodlo/{cfg.id}.ics", f"Tarnów: {cfg.name}", f"Źródło: {cfg.url}", evs, "source")
+        feed(f"zrodlo/{cfg.id}.ics", f"Tarnów: {cfg.name}", f"Źródło: {cfg.url}", evs, "source",
+             src=cfg.id, label=cfg.name, site=cfg.url, sgroup=cfg.group)
 
     def ev_json(e: Event) -> dict:
         d = asdict(e)
@@ -253,16 +276,29 @@ def write_outputs(settings: Settings, events: list[Event], configs: list[SourceC
 
     (out / "events.json").write_text(json.dumps([ev_json(e) for e in events], ensure_ascii=False, indent=1))
     (out / "feeds.json").write_text(json.dumps(feeds, ensure_ascii=False, indent=1))
-    # Crawlable page per upcoming event, list page, sitemap.xml, robots.txt, 404.html.
-    pages = write_seo(out, settings.public_base_url, events, datetime.now(TZ))
+    # Crawlable page per upcoming event, and for a year per past one (archive.py), sitemap.xml, robots.txt, 404.html.
+    # A source that failed or listed nothing today proves nothing about its events having been removed.
+    arch_files = (out / archive.FILE, settings.cache_dir / archive.FILE)
+    arch = archive.load(*arch_files)
+    fetched = {sid for sid, s in stats.items() if s.get("ok") and s.get("events")}
+    pages = write_seo(out, settings.public_base_url, events, datetime.now(TZ), arch, fetched)
+    archive.save(arch, *arch_files)
     cal = json.dumps(calendar_json(events, feeds, pages), ensure_ascii=False, separators=(",", ":"))
     (out / "calendar.json").write_text(cal)
     # The page loads data as a script (works from file:// too, no fetch/CORS concerns).
     (out / "data.js").write_text("window.CAL = " + cal.replace("</", "<\\/") + ";\n")
-    (out / "zrodla.html").write_text(render_index(settings, feeds, events, configs, stats), encoding="utf-8")
-    catalogue = settings.root / "docs" / "sources.html"
-    if catalogue.exists():  # research catalogue of every source considered, published as-is
-        (out / "katalog-zrodel.html").write_text(catalogue.read_text(encoding="utf-8"), encoding="utf-8")
+    # Sources page: what we fetch (with its state), then sources considered and not used, from the research
+    # catalogue (docs/sources-catalogue.json, see scripts/render_catalogue.py).
+    try:
+        catalogue = json.loads((settings.root / "docs" / "sources-catalogue.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        catalogue = []
+    totals = {"all": len(events), "tarnow": sum(1 for e in events if e.in_main and is_tarnow(e)),
+              "okolice": sum(1 for e in events if e.in_main and not is_tarnow(e)), "kino": sum(1 for e in events if not e.in_main)}
+    fb_form = next((c.options.get("form_url") for c in configs if c.type == "facebook" and c.options.get("form_url")), None)
+    (out / "zrodla.html").write_text(render_index(settings, feeds, events, configs, stats, SOURCE_GROUPS, totals=totals,
+                                                  catalogue=catalogue, fb_form=fb_form), encoding="utf-8")
+    (out / "katalog-zrodel.html").unlink(missing_ok=True)  # merged into zrodla.html
     web = Path(__file__).parent / "web"
     # Site icon (Material "local_activity" ticket, same as the logo); PNG/ICO are pre-rendered from the SVG.
     for name in ("favicon.svg", "favicon.ico", "apple-touch-icon.png", "og-image.png"):
@@ -270,8 +306,29 @@ def write_outputs(settings: Settings, events: list[Event], configs: list[SourceC
     # The web calendar is a static page that reads calendar.json.
     page = (web / "kalendarz.html").read_text(encoding="utf-8")
     page = page.replace("<!--STATIC-LIST-->", home_list(events, pages, datetime.now(TZ)))
+    if fb_form:  # the button takes the place of ‹ Dziś › (keyboard ←/t/→ still works)
+        a, b = page.index("<!--NAV-->"), page.index("<!--/NAV-->") + len("<!--/NAV-->")
+        page = page[:a] + FB_ADD_BUTTON.replace("{href}", escape(fb_form, quote=True)) + page[b:]
     (out / "index.html").write_text(apply_ads(page, out, settings.adsense_client, settings.adsense_slot),
                                     encoding="utf-8")
+
+
+# Facebook logo: Simple Icons (CC0), drawn in the text colour.
+FB_ADD_BUTTON = (
+    '<a class="fbadd sl" href="{href}" target="_blank" rel="noopener" title="Dodaj wydarzenie z Facebooka">'
+    '<span class="ms" aria-hidden="true">add</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.101 23.691v-7.98H6.627v-3.667h2.474v-1.58c0-4.085 '
+    '1.848-5.978 5.858-5.978.401 0 .955.042 1.468.103a8.68 8.68 0 0 1 1.141.195v3.325a8.623 8.623 0 0 0-.653-.036 '
+    '26.805 26.805 0 0 0-.733-.009c-.707 0-1.259.096-1.675.309a1.686 1.686 0 0 0-.679.622c-.258.42-.374.995-.374 '
+    '1.752v1.297h3.919l-.386 2.103-.287 1.564h-3.246v8.245C19.396 23.238 24 18.179 24 12.044c0-6.627-5.373-12-12-12s-12 '
+    '5.373-12 12c0 5.628 3.874 10.35 9.101 11.647Z"/></svg>'
+    'Wydarzenie z FB</a>'
+)
+
+REGION_NAMES = {"all": "Tarnów i okolice", "tarnow": "Tarnów – miasto", "okolice": "Okolice Tarnowa"}
+# sources.yaml `group` → heading in the subscribe wizard and on zrodla.html, in this order.
+SOURCE_GROUPS = {"miasto": "Miasto Tarnów", "kultura": "Kultura w Tarnowie", "kino": "Kina", "bilety": "Serwisy biletowe",
+                 "sport": "Sport", "edukacja": "Uczelnie i szkoły", "religia": "Kościół", "lokale": "Lokale i galerie",
+                 "media": "Media", "region": "Gminy i miasta w okolicy", "facebook": "Facebook"}
 
 
 def calendar_json(events: list[Event], feeds: list[dict], pages: dict[str, str] | None = None) -> dict:
@@ -306,6 +363,12 @@ def calendar_json(events: list[Event], feeds: list[dict], pages: dict[str, str] 
     return {
         "generated": datetime.now(TZ).isoformat(),
         "categories": CATEGORIES,
-        "feeds": [{"path": f["path"], "name": f["name"], "count": f["count"]} for f in feeds if f["group"] != "source"],
+        # Every feed for the subscribe wizard; a source with nothing upcoming has nothing to subscribe to.
+        "feeds": [{k: v for k, v in f.items() if k != "name" or f["group"] != "source"}
+                  for f in feeds if f["count"] or f["group"] != "source"],
+        "regions": REGION_NAMES,
+        "groups": SOURCE_GROUPS,
+        "howto": howto_html(),
+        "apps": [{**a, "icon": app_icon(a["icon"])} for a in APPS],
         "events": rows,
     }

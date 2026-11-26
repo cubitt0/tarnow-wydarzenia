@@ -7,7 +7,9 @@ Relay blocks, which are decoded and walked here.
 
 Event URLs come from:
   1. `events:` in this source's config (hand-curated),
-  2. facebook.com/events/<id> links found in any other source's events (auto-discovered).
+  2. facebook.com/events/<id> links found in any other source's events (auto-discovered),
+  3. links visitors send in through a Google Form, kept only when a whitelisted page hosts the
+     event (see submissions.py).
 """
 
 from __future__ import annotations
@@ -19,6 +21,8 @@ import time
 from typing import Any
 
 from .. import http
+from ..submissions import FILE as LEDGER_FILE
+from ..submissions import Ledger, event_ids_in, host_match, read_csv, whitelist
 from .base import Source
 
 log = logging.getLogger(__name__)
@@ -101,6 +105,13 @@ def parse_event_page(html: str, event_id: str) -> dict | None:
         photo = (renderer.get("cover_photo") or {}).get("photo") or {}
         cover = (photo.get("full_image") or {}).get("uri")
 
+    hosts: list[dict] = []
+    for h in (first("event_hosts_that_can_view_guestlist") or []) + \
+            ((first("event_accepted_cohosts") or {}).get("nodes") or []) + \
+            [first("event_creator") or {}, first("page_as_owner") or {}]:
+        if isinstance(h, dict) and h.get("id") and all(x["id"] != h["id"] for x in hosts):
+            hosts.append({"id": str(h["id"]), "name": h.get("name"), "url": h.get("url")})
+
     return {
         "title": first("name"),
         "start": start,
@@ -114,6 +125,7 @@ def parse_event_page(html: str, event_id: str) -> dict | None:
         "image": cover,
         "online": bool(first("is_online")),
         "cancelled": bool(first("is_canceled")),
+        "hosts": hosts,
     }
 
 
@@ -125,43 +137,124 @@ class FacebookSource(Source):
         self.discovered: set[str] = set()
 
     def fetch(self):
-        ids: set[str] = set(self.discovered)
-        for url in self.cfg.options.get("events", []) or []:
-            ids |= find_event_ids(url)
-        delay = float(self.cfg.options.get("delay", 2))
-        unreadable_streak = 0
-        for event_id in sorted(ids):
-            url = CANONICAL.format(event_id)
-            try:
-                html = http.get(url, headers={"Sec-Fetch-Site": "same-origin"}).text
-            except Exception as e:
-                log.info("facebook %s fetch failed: %s", event_id, e)
-                continue
-            finally:
-                time.sleep(delay)
-            data = parse_event_page(html, event_id)
-            if data is None:
-                unreadable_streak += 1
-                if unreadable_streak >= 5:
-                    log.error("facebook: 5 unreadable events in a row - payload shape changed or IP blocked; stopping")
+        files = (self.settings.out_dir / LEDGER_FILE, self.settings.cache_dir / LEDGER_FILE)
+        ledger = Ledger.load(*files)
+        ledger.forget_data_before(int(time.time()) - self.settings.days_back * 86400)
+        self._streak = 0
+        handled: set[str] = set()
+        allowed = self._whitelist() if self.cfg.options.get("submissions_csv") else {}
+        for event_id in ledger.recheck(allowed):
+            log.info("facebook submission %s accepted: its host is on the whitelist now", event_id)
+        try:
+            # Accepted submissions: from the ledger, never fetched again.
+            for event_id, rec in ledger.accepted().items():
+                handled.add(event_id)
+                ev = self._event(event_id, rec["data"])
+                if ev:
+                    yield ev
+            if self.cfg.options.get("submissions_csv"):
+                yield from self._submissions(ledger, handled, allowed)
+            ids: set[str] = set(self.discovered)
+            for url in self.cfg.options.get("events", []) or []:
+                ids |= find_event_ids(url)
+            for event_id in sorted(ids - handled):
+                data = self._read(event_id)
+                if data is False:
                     return
+                if data:
+                    ev = self._event(event_id, data)
+                    if ev:
+                        yield ev
+        finally:
+            ledger.save(*files)
+
+    def _submissions(self, ledger: Ledger, handled: set[str], allowed: dict[str, str]):
+        try:
+            text = http.get(self.cfg.options["submissions_csv"], bare=True).text
+        except Exception as e:  # the form's Sheet being down must not cost the other Facebook events
+            log.warning("facebook submissions: sheet unreadable: %s", e)
+            return
+        new: list[str] = []
+        for row in read_csv(text):
+            for event_id in sorted(event_ids_in(row, self._resolve)):
+                if event_id not in handled and not ledger.done(event_id) and event_id not in new:
+                    new.append(event_id)
+        limit = int(self.cfg.options.get("submissions_per_build", 20))
+        if len(new) > limit:
+            log.info("facebook submissions: %d new, reading %d this build", len(new), limit)
+        accepted = 0
+        for event_id in new[:limit]:
+            handled.add(event_id)
+            data = self._read(event_id)
+            if data is False:
+                return
+            if data is None:
+                ledger.retry(event_id)
                 continue
-            unreadable_streak = 0
-            if data["online"]:
+            host = host_match(data["hosts"], allowed)
+            if not host:
+                names = ", ".join(h["name"] or h["id"] for h in data["hosts"]) or "?"
+                log.info("facebook submission %s rejected: host %s not on the whitelist", event_id, names)
+                ledger.reject(event_id, "organizator spoza listy stron", names, data)
                 continue
-            ev = self.make_event(
-                title=data["title"],
-                start=data["start"],
-                end=data["end"],
-                url=url,
-                description=data["description"],
-                location_name=data["place"],
-                address=data["address"],
-                town=data["town"],
-                lat=data["lat"],
-                lon=data["lon"],
-                image=data["image"],
-                cancelled=data["cancelled"],
-            )
+            ledger.accept(event_id, data, host)
+            accepted += 1
+            ev = self._event(event_id, data)
             if ev:
                 yield ev
+        log.info("facebook submissions: %d new, %d accepted", min(len(new), limit), accepted)
+
+    def _whitelist(self) -> dict[str, str]:
+        try:
+            catalogue = json.loads((self.settings.root / "docs" / "sources-catalogue.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            catalogue = []
+        allowed = whitelist(catalogue, self.cfg.options.get("allowed_pages"))
+        if not allowed:
+            log.warning("facebook submissions: empty whitelist, every submission will be rejected")
+        return allowed
+
+    def _resolve(self, url: str) -> str | None:
+        try:
+            return str(http.get(url, retries=0).url)
+        except Exception:
+            return None
+
+    def _read(self, event_id: str) -> dict | None | bool:
+        """The event's data; None when unreadable; False after 5 unreadable in a row (stop for today)."""
+        if self._streak >= 5:
+            return False
+        try:
+            html = http.get(CANONICAL.format(event_id), headers={"Sec-Fetch-Site": "same-origin"}).text
+        except Exception as e:
+            log.info("facebook %s fetch failed: %s", event_id, e)
+            return None
+        finally:
+            time.sleep(float(self.cfg.options.get("delay", 2)))
+        data = parse_event_page(html, event_id)
+        if data is None:
+            self._streak += 1
+            if self._streak >= 5:
+                log.error("facebook: 5 unreadable events in a row - payload shape changed or IP blocked; stopping")
+                return False
+            return None
+        self._streak = 0
+        return data
+
+    def _event(self, event_id: str, data: dict):
+        if data["online"]:
+            return None
+        return self.make_event(
+            title=data["title"],
+            start=data["start"],
+            end=data["end"],
+            url=CANONICAL.format(event_id),
+            description=data["description"],
+            location_name=data["place"],
+            address=data["address"],
+            town=data["town"],
+            lat=data["lat"],
+            lon=data["lon"],
+            image=data["image"],
+            cancelled=data["cancelled"],
+        )

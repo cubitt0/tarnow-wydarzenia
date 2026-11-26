@@ -3,7 +3,8 @@
 The calendar (index.html) is drawn by JavaScript and addresses events by #fragment, which search
 engines do not index. Every upcoming event therefore also gets a plain HTML page at
 /wydarzenie/<date>/<slug>/ with its own title, description, Open Graph tags and schema.org Event
-data; /wydarzenia/ lists them all by day, and sitemap.xml + robots.txt point crawlers at them.
+data; sitemap.xml + robots.txt point crawlers at them, and the home page carries a plain list of the
+coming days for crawlers that do not run JavaScript. Pages of past events stay for a year (archive.py).
 """
 
 from __future__ import annotations
@@ -35,15 +36,23 @@ def slugify(text: str, max_len: int = 70) -> str:
     return slug or "wydarzenie"
 
 
-def page_paths(events: list[Event]) -> dict[str, str]:
-    """uid -> site path ("wydarzenie/2026-11-28/koncert-kult/"). Same-day namesakes get a uid suffix."""
+def page_paths(events: list[Event], keep: dict[str, str] | None = None) -> dict[str, str]:
+    """uid -> site path ("wydarzenie/2026-11-28/koncert-kult/"). Same-day namesakes get a uid suffix.
+    keep: uid -> earlier path; an event keeps its address while its date stays, even if its title is corrected."""
+    keep = keep or {}
     paths: dict[str, str] = {}
-    taken: set[str] = set()
     for e in events:
+        p = keep.get(e.uid)
+        if p and p.startswith(f"wydarzenie/{e.day.isoformat()}/") and p not in paths.values():
+            paths[e.uid] = p
+    taken = set(paths.values())
+    for e in events:
+        if e.uid in paths:
+            continue
         base = f"wydarzenie/{e.day.isoformat()}/{slugify(e.title)}"
-        path = base if base not in taken else f"{base}-{re.sub(r'[^a-z0-9]', '', e.uid.lower())[:6]}"
+        path = base + "/" if base + "/" not in taken else f"{base}-{re.sub(r'[^a-z0-9]', '', e.uid.lower())[:6]}/"
         taken.add(path)
-        paths[e.uid] = path + "/"
+        paths[e.uid] = path
     return paths
 
 
@@ -123,7 +132,7 @@ header a{font-weight:700;text-decoration:none;font-size:18px}nav.crumbs{font-siz
 nav.crumbs a{color:var(--mut)}h1{font-size:clamp(24px,5vw,34px);line-height:1.2;margin:0 0 12px}
 .hero{width:100%;max-height:420px;object-fit:contain;background:var(--chip);border-radius:16px;margin:0 0 16px;display:block}
 .cats{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px}.cat{background:var(--chip);border-radius:999px;padding:2px 10px;font-size:13px}
-.x{color:#b3261e;font-weight:700}dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 14px;margin:0 0 16px}
+.x{color:#b3261e;font-weight:700}.note{background:var(--chip);border-radius:12px;padding:10px 14px;margin:0 0 16px}dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 14px;margin:0 0 16px}
 dt{color:var(--mut)}dd{margin:0}.desc{white-space:pre-line;overflow-wrap:anywhere}
 .btns{display:flex;gap:8px;flex-wrap:wrap;margin:20px 0}.btn{display:inline-block;padding:10px 18px;border-radius:999px;
 border:1px solid var(--line);text-decoration:none;font-weight:600}.btn.f{background:var(--acc);color:var(--bg);border-color:var(--acc)}
@@ -173,14 +182,18 @@ def _page(base: str, path: str, title: str, desc: str, body: str, *, image: str 
 <main class="wrap">
 {body}
 </main>
-<footer class="wrap"><a href="/">Kalendarz</a> · <a href="/wydarzenia/">Wszystkie wydarzenia</a> ·
-<a href="/zrodla.html">Źródła i subskrypcje iCal</a></footer>
+<footer class="wrap"><a href="/">Kalendarz</a> · <a href="/zrodla.html">Źródła wydarzeń</a></footer>
 </body>
 </html>
 """
 
 
-def event_page(base: str, e: Event, path: str, siblings: list[tuple[Event, str]], *, screening: bool = False) -> str:
+PAST, GONE = "past", "gone"  # archived pages (archive.py): the event took place / vanished from its sources
+
+
+def event_page(base: str, e: Event, path: str, siblings: list[tuple[Event, str]], *, screening: bool = False,
+               status: str | None = None) -> str:
+    """status PAST or GONE: an archived page; siblings are then upcoming events to go to instead."""
     s = e.start.astimezone(TZ)
     place = e.location_line()
     cats = [CATEGORIES.get(c, c) for c in e.categories]
@@ -207,12 +220,11 @@ def event_page(base: str, e: Event, path: str, siblings: list[tuple[Event, str]]
         ld["description"] = _desc(e.description, 500)
     if e.image:
         ld["image"] = [e.image]
-    if e.tickets:
+    if e.tickets and not status:
         ld["offers"] = {"@type": "Offer", "url": e.tickets, "availability": "https://schema.org/InStock"}
     crumbs = {"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [
         {"@type": "ListItem", "position": 1, "name": "Kalendarz", "item": f"{base}/"},
-        {"@type": "ListItem", "position": 2, "name": "Wydarzenia", "item": f"{base}/wydarzenia/"},
-        {"@type": "ListItem", "position": 3, "name": e.title},
+        {"@type": "ListItem", "position": 2, "name": e.title},
     ]}
 
     rows = [f"<dt>Kiedy</dt><dd>{escape(when_text(e))}</dd>"]
@@ -229,57 +241,65 @@ def event_page(base: str, e: Event, path: str, siblings: list[tuple[Event, str]]
     if e.description:
         from .pipeline import short_desc  # one cut-off rule for the calendar and these pages
         desc_html = f'<p class="desc">{escape(short_desc(e.description))}</p>'
-    btns = [f'<a class="btn f" href="/#e={escape(e.uid)}">Pokaż w kalendarzu</a>']
-    if e.tickets and not e.cancelled:
+    # An archived event is no longer in the calendar, and its tickets are not for sale.
+    btns = [f'<a class="btn f" href="/">Zobacz nadchodzące wydarzenia</a>' if status else
+            f'<a class="btn f" href="/#e={escape(e.uid)}">Pokaż w kalendarzu</a>']
+    if e.tickets and not e.cancelled and not status:
         btns.insert(0, f'<a class="btn f" href="{escape(e.tickets)}" rel="noopener nofollow">Kup bilet</a>')
     btns.append(f'<a class="btn" href="{escape(src[0].url)}" rel="noopener nofollow">Strona organizatora</a>')
+    note = ""
+    if status == GONE:
+        note = ('<p class="note">Tego wydarzenia nie ma już w kalendarzu organizatora – mogło zostać odwołane '
+                'albo przeniesione na inny termin. Sprawdź na stronie organizatora.</p>')
+    elif status == PAST and not e.cancelled:
+        note = '<p class="note">To wydarzenie już się odbyło.</p>'
     more = ""
     if siblings:
         def when(o: Event) -> str:
             t = o.start.astimezone(TZ)
-            return "cały dzień" if o.all_day else f"{DAYS[t.weekday()][:3]} {t.day}.{t.month:02d}, {t:%H:%M}" if screening else f"{t:%H:%M}"
+            dated = screening or status
+            return "cały dzień" if o.all_day else f"{DAYS[t.weekday()][:3]} {t.day}.{t.month:02d}, {t:%H:%M}" if dated else f"{t:%H:%M}"
         items = "".join(
             f'<li><span class="t">{when(o)}</span> '
             f'<a href="/{p}">{escape(o.title)}</a><small>{escape(o.location_line() or "")}</small></li>'
             for o, p in siblings[:12])
-        more = f"<h2>{'Inne seanse' if screening else 'Tego samego dnia'}</h2><ul class=\"list\">{items}</ul>"
+        heading = "Inne seanse" if screening else "Nadchodzące wydarzenia" if status else "Tego samego dnia"
+        more = f"<h2>{heading}</h2><ul class=\"list\">{items}</ul>"
 
-    anchor = "wystawy" if is_long(e) else s.date().isoformat()
-    body = f"""<nav class="crumbs"><a href="/">Kalendarz</a> › <a href="/wydarzenia/#{anchor}">{"Wystawy wielodniowe" if is_long(e) else escape(long_date(s.date()))}</a></nav>
+    # The date opens that day in the calendar; a long exhibition is on today's page anyway, and an
+    # archived event's day has left the calendar.
+    day = "/" if is_long(e) or status else f"/#dzien={s.date().isoformat()}"
+    body = f"""<nav class="crumbs"><a href="/">Kalendarz</a> › <a href="{day}">{"Wystawy wielodniowe" if is_long(e) else escape(long_date(s.date()))}</a></nav>
 <article>
 {f'<img class="hero" src="{escape(e.image)}" alt="{escape(e.title)}" referrerpolicy="no-referrer">' if e.image else ""}
 <div class="cats">{"".join(f'<span class="cat">{escape(c)}</span>' for c in cats)}</div>
 <h1>{'<span class="x">Odwołane: </span>' if e.cancelled else ""}{escape(e.title)}</h1>
-<dl>{"".join(rows)}</dl>
+{note}<dl>{"".join(rows)}</dl>
 {desc_html}
 <div class="btns">{"".join(btns)}</div>
 </article>
 {more}"""
-    return _page(base, path, title, desc, body, image=e.image, og_type="article", ld=[ld, crumbs], noindex=screening)
+    # A removed event, or a cancelled one now past, is of no use to anyone searching: drop it from the index.
+    hide = screening or status == GONE or (status == PAST and e.cancelled)
+    return _page(base, path, title, desc, body, image=e.image, og_type="article",
+                 ld=[crumbs] if status == GONE else [ld, crumbs], noindex=hide)
 
 
-def list_page(base: str, events: list[Event], paths: dict[str, str]) -> str:
-    def items(evs: list[Event], when) -> str:
-        return "".join(f'<li><span class="t">{when(e)}</span> <a href="/{paths[e.uid]}">{escape(e.title)}</a>'
-                       f'<small>{escape(e.location_line() or "")}</small></li>' for e in evs)
+def related(e: Event, upcoming: list[Event], paths: dict[str, str], n: int = 6) -> list[tuple[Event, str]]:
+    """Upcoming events for an archived page: same venue first, then the same kind, soonest first."""
+    pool = [o for o in upcoming if not is_long(o) and o.uid != e.uid]
+    venue = [o for o in pool if e.location_name and o.location_name == e.location_name]
+    seen = {o.uid for o in venue}
+    kind = [o for o in pool if o.uid not in seen and set(o.categories) & set(e.categories)]
+    return [(o, paths[o.uid]) for o in (venue[:n // 2] + kind)[:n]]
 
-    by_day: dict = {}
-    for e in events:
-        if not is_long(e):
-            by_day.setdefault(e.day, []).append(e)
-    sections = [f'<h2 id="{d.isoformat()}">{escape(long_date(d)).capitalize()}</h2><ul class="list">'
-                f'{items(evs, lambda e: "cały dzień" if e.all_day else f"{e.start.astimezone(TZ):%H:%M}")}</ul>'
-                for d, evs in by_day.items()]
-    long = [e for e in events if is_long(e)]
-    if long:  # exhibitions that run for weeks would sit under a long-past opening day
-        sections.append('<h2 id="wystawy">Wystawy i wydarzenia wielodniowe</h2><ul class="list">'
-                        + items(long, lambda e: f"do {e.end:%d.%m}" if e.end else "") + "</ul>")
-    body = (f'<h1>Wydarzenia w Tarnowie i okolicach</h1><p>{len(events)} nadchodzących wydarzeń w Tarnowie i do 50 km: '
-            f'koncerty, teatr, wystawy, sport, imprezy dla dzieci. <a href="/">Otwórz kalendarz</a>.</p>'
-            + "".join(sections))
-    return _page(base, "wydarzenia/", f"Lista wydarzeń – Tarnów i okolice | {SITE}",
-                 "Wszystkie nadchodzące wydarzenia w Tarnowie i do 50 km, dzień po dniu: koncerty, teatr, kino, "
-                 "wystawy, sport, imprezy dla dzieci i festiwale.", body)
+
+def redirect_page(base: str, path: str, title: str) -> str:
+    """The old address of an event that moved to another date: an instant redirect, read as permanent."""
+    url = f"{base}/{path}"
+    return (f'<!doctype html><html lang="pl"><head><meta charset="utf-8"><title>{escape(title)}</title>'
+            f'<link rel="canonical" href="{escape(url)}"><meta http-equiv="refresh" content="0; url=/{escape(path)}">'
+            f'</head><body><p>Strona wydarzenia jest teraz tutaj: <a href="/{escape(path)}">{escape(title)}</a></p></body></html>')
 
 
 def home_list(events: list[Event], paths: dict[str, str], now: datetime, days: int = 7) -> str:
@@ -297,30 +317,53 @@ def home_list(events: list[Event], paths: dict[str, str], now: datetime, days: i
                   + (f' <small>{escape(e.location_line())}</small>' if e.location_line() else "") + "</li>" for e in evs)
         + "</ul>" for d, evs in by_day.items())
     return (f'<section class="static-list" aria-label="Najbliższe wydarzenia"><h1>Wydarzenia w Tarnowie i okolicach – najbliższe {days} dni</h1>'
-            f'{sections}<p><a href="wydarzenia/">Wszystkie nadchodzące wydarzenia</a></p></section>')
+            f'{sections}</section>')
 
 
 NOT_FOUND = """<h1>Nie znaleziono strony</h1>
 <p>To wydarzenie mogło się już odbyć albo zmienić termin. Aktualne wydarzenia znajdziesz w kalendarzu.</p>
-<div class="btns"><a class="btn f" href="/">Otwórz kalendarz</a><a class="btn" href="/wydarzenia/">Lista wydarzeń</a></div>"""
+<div class="btns"><a class="btn f" href="/">Otwórz kalendarz</a></div>"""
 
 
-def write_seo(out: Path, base: str, events: list[Event], now: datetime) -> dict[str, str]:
-    """Write event pages, the list page, sitemap.xml, robots.txt and 404.html. Returns uid -> path."""
+def write_seo(out: Path, base: str, events: list[Event], now: datetime, archived: dict[str, dict] | None = None,
+              fetched: set[str] | None = None) -> dict[str, str]:
+    """Write event pages, sitemap.xml, robots.txt and 404.html. Returns uid -> path of today's events.
+
+    archived: the page archive (archive.py), updated in place; its events that are over or gone keep
+    their pages. fetched: the sources read successfully in this run (None: all)."""
+    from .archive import update
+
+    archived = {} if archived is None else archived
     upcoming = sorted((e for e in events if e.in_main and (e.end or e.start) >= now),
                       key=lambda e: (e.start, e.title))
-    paths = page_paths(upcoming)
+    paths = page_paths(upcoming, {uid: r["path"] for uid, r in archived.items()})
+    kept = update(archived, events, paths, now, fetched)
+    # Screenings are not archived (noindex, hundreds a week), but must not take an archived address.
     shows = sorted((e for e in events if is_screening(e) and e.start >= now), key=lambda e: (e.start, e.title))
-    show_paths = screening_paths(shows, {p.rstrip("/") for p in paths.values()})
-    shutil.rmtree(out / "wydarzenie", ignore_errors=True)  # events gone from the window lose their pages
+    show_paths = screening_paths(shows, {p.rstrip("/") for p in [*paths.values(), *(r["path"] for _, r in kept)]})
+    shutil.rmtree(out / "wydarzenie", ignore_errors=True)  # rebuilt whole: today's events + the archive
     by_day: dict = {}
     for e in upcoming:
         by_day.setdefault(e.day, []).append(e)
-    for e in upcoming:
-        siblings = [(o, paths[o.uid]) for o in by_day[e.day] if o.uid != e.uid]
-        f = out / paths[e.uid] / "index.html"
+
+    def write(path: str, html: str) -> None:
+        f = out / path / "index.html"
         f.parent.mkdir(parents=True, exist_ok=True)
-        f.write_text(event_page(base, e, paths[e.uid], siblings), encoding="utf-8")
+        f.write_text(html, encoding="utf-8")
+
+    for e in upcoming:
+        write(paths[e.uid], event_page(base, e, paths[e.uid], [(o, paths[o.uid]) for o in by_day[e.day] if o.uid != e.uid]))
+    for e, rec in kept:
+        if rec["gone"] or (e.end or e.start) < now:
+            write(rec["path"], event_page(base, e, rec["path"], related(e, upcoming, paths),
+                                          status=GONE if rec["gone"] else PAST))
+        else:  # not listed today, but its source could not be read: the page stays as it was
+            write(rec["path"], event_page(base, e, rec["path"], [(o, paths[o.uid]) for o in by_day.get(e.day, [])]))
+    pages = {*paths.values(), *show_paths.values(), *(r["path"] for _, r in kept)}
+    for uid, rec in archived.items():
+        for old in rec.get("old", []):
+            if old not in pages:
+                write(old, redirect_page(base, rec["path"], rec["event"]["title"]))
     by_film: dict = {}
     for e in shows:
         by_film.setdefault(slugify(film_title(e.title)), []).append(e)
@@ -332,14 +375,12 @@ def write_seo(out: Path, base: str, events: list[Event], now: datetime) -> dict[
         f.parent.mkdir(parents=True, exist_ok=True)
         f.write_text(event_page(base, e, show_paths[e.uid], [(o, show_paths[o.uid]) for o in others], screening=True),
                      encoding="utf-8")
-    (out / "wydarzenia").mkdir(parents=True, exist_ok=True)
-    (out / "wydarzenia" / "index.html").write_text(list_page(base, upcoming, paths), encoding="utf-8")
+    shutil.rmtree(out / "wydarzenia", ignore_errors=True)  # the old day-by-day list page, now gone
     (out / "404.html").write_text(_page(base, "404.html", f"Nie znaleziono | {SITE}", "Nie znaleziono strony.",
                                         NOT_FOUND, noindex=True), encoding="utf-8")
 
     today = now.date().isoformat()
-    urls = [(f"{base}/", today, "daily", "1.0"), (f"{base}/wydarzenia/", today, "daily", "0.8"),
-            (f"{base}/zrodla.html", today, "weekly", "0.3")]
+    urls = [(f"{base}/", today, "daily", "1.0"), (f"{base}/zrodla.html", today, "weekly", "0.3")]
     urls += [(f"{base}/{paths[e.uid]}", None, None, "0.6") for e in upcoming]
     lines = ['<?xml version="1.0" encoding="UTF-8"?>',
              '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']

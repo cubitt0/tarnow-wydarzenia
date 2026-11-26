@@ -59,10 +59,10 @@ same: nie trzeba niczego pobierać ponownie.
 
 ## Skąd są wydarzenia
 
-Kalendarz łączy ponad 120 źródeł. Pełny katalog 200 sprawdzonych źródeł jest w
-[docs/SOURCES.md](docs/SOURCES.md) oraz na stronie
-[katalog źródeł](https://tarnow-wydarzenia.pl/katalog-zrodel.html). Stan każdego źródła
-po ostatniej aktualizacji: [źródła i status](https://tarnow-wydarzenia.pl/zrodla.html).
+Kalendarz łączy ponad 120 źródeł. Stan każdego z nich po ostatniej aktualizacji oraz źródła
+sprawdzone, ale nieużywane (planowane i odrzucone, z powodem) są na stronie
+[źródła wydarzeń](https://tarnow-wydarzenia.pl/zrodla.html). Pełny katalog 200 sprawdzonych źródeł
+z notatkami: [docs/SOURCES.md](docs/SOURCES.md).
 
 - **Miasto Tarnów:** kalendarz Tarnowskiego Centrum Informacji (it.tarnow.pl), kultura.tarnow.pl, kalendarz sportowy UM Tarnowa.
 - **Kultura:** Teatr im. Ludwika Solskiego, Tarnowskie Centrum Kultury, BWA Tarnów, Centrum Sztuki Mościce,
@@ -99,6 +99,26 @@ Zgłoś je w [Issues](https://github.com/cubitt0/tarnow-wydarzenia/issues) albo 
 **Dlaczego nie ma wszystkiego z Facebooka?**
 Facebook nie udostępnia listy wydarzeń strony bez logowania. Kalendarz pobiera pojedyncze publiczne
 wydarzenia z Facebooka, jeśli link do nich pojawi się w innym źródle albo zostanie dopisany ręcznie.
+Link możesz też wysłać sam przez [formularz](https://forms.gle/nUEmBWzEhKBGB4ym6) (przycisk „Wydarzenie z FB”
+w kalendarzu). Wydarzenie trafia do kalendarza przy najbliższej aktualizacji, jeśli organizuje je jedna ze
+[stron z listy](https://tarnow-wydarzenia.pl/zrodla.html#dodaj).
+
+<details><summary>Formularz dla Facebooka: konfiguracja</summary>
+
+1. Google Forms: jedno pytanie „Link do wydarzenia na Facebooku” (krótka odpowiedź) i opcjonalne „Uwagi”.
+   Bez zbierania adresów e-mail.
+2. Odpowiedzi → Połącz z Arkuszami. W arkuszu: Plik → Udostępnij → Opublikuj w internecie → arkusz
+   z odpowiedziami, format CSV.
+3. W [`sources.yaml`](sources.yaml), w źródle `facebook`: `form_url` (link do formularza) i
+   `submissions_csv` (link CSV). Od tej chwili kalendarz ma przycisk „Wydarzenie z FB” (zamiast
+   ‹ Dziś ›), a strona źródeł listę stron, których wydarzenia przyjmujemy.
+
+Każda kompilacja czyta CSV jednym zapytaniem, pobiera do 20 nowych wydarzeń i przyjmuje te, których
+organizatorem jest strona z `fb` w [docs/sources-catalogue.json](docs/sources-catalogue.json) lub
+z `allowed_pages`. Obsłużone linki (przyjęte i odrzucone, z nazwą organizatora) są w `submissions.json`
+na stronie i nie są pobierane ponownie. Odrzuconego organizatora wystarczy dopisać do `allowed_pages`:
+jego wcześniej odrzucone wydarzenia (jeszcze nie minione) wejdą do kalendarza przy następnej kompilacji.
+</details>
 
 ---
 

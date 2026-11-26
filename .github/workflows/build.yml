@@ -69,10 +69,15 @@ jobs:
 
       # UID state lives next to the feeds; pull yesterday's so calendar apps see updates,
       # not delete+create, when an event is merged with a newly found duplicate.
-      - name: Restore UID state
+      # The page archive too: past events keep their pages for a year (src/tarnow_events/archive.py).
+      # A second copy rides in the cache above, so one failed download loses nothing.
+      - name: Restore UID state and page archive
         run: |
           mkdir -p public
           curl -fsSL "${{ steps.pages.outputs.base_url }}/state.json" -o public/state.json || echo '{"uids":{}}' > public/state.json
+          curl -fsSL "${{ steps.pages.outputs.base_url }}/archive.json.gz" -o public/archive.json.gz || rm -f public/archive.json.gz
+          # Facebook events sent in through the form: which were handled (src/tarnow_events/submissions.py).
+          curl -fsSL "${{ steps.pages.outputs.base_url }}/submissions.json" -o public/submissions.json || rm -f public/submissions.json
 
       - name: Build feeds
         env:

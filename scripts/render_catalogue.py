@@ -1,4 +1,5 @@
-"""Renders docs/SOURCES.md and docs/sources.html from docs/sources-catalogue.json.
+"""Renders docs/SOURCES.md from docs/sources-catalogue.json. The site's zrodla.html reads the JSON itself
+(planned / rejected sources with their public reason `r`, and name `pn` where `n` is a working note).
 
 Run after editing the catalogue JSON: python3 scripts/render_catalogue.py
 """
@@ -39,14 +40,7 @@ def main() -> None:
         out.append("")
     (DOCS / "SOURCES.md").write_text("\n".join(out), encoding="utf-8")
 
-    data = json.dumps(recs, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
-    body = (DOCS / "catalogue.tpl.html").read_text(encoding="utf-8")
-    body = body.replace("__DATA__", data).replace("__DATE__", date.today().strftime("%d.%m.%Y"))
-    html = ('<!doctype html>\n<html lang="pl">\n<head>\n<meta charset="utf-8">\n'
-            '<meta name="viewport" content="width=device-width,initial-scale=1">\n'
-            + body.replace('<div class="wrap">', '</head>\n<body>\n<div class="wrap">', 1) + "\n</body>\n</html>\n")
-    (DOCS / "sources.html").write_text(html, encoding="utf-8")
-    print(f"{len(recs)} sources → docs/SOURCES.md, docs/sources.html")
+    print(f"{len(recs)} sources → docs/SOURCES.md")
 
 
 if __name__ == "__main__":
