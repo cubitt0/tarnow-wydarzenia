@@ -10,6 +10,9 @@
 <link rel="icon" href="favicon.ico" sizes="48x48">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
+<!-- An open event shows /wydarzenie/…/ in the address bar (replaceState) and Chrome then re-resolves
+     relative icon links against it (404). Fix them to where the page really is. -->
+<script>document.querySelectorAll('link[rel~="icon"],link[rel="apple-touch-icon"]').forEach(l => l.href = l.href);</script>
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Wydarzenia Tarnów">
 <meta name="twitter:card" content="summary_large_image">
