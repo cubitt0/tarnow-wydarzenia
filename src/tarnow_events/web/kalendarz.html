@@ -34,7 +34,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wdth,wght@8..144,25..151,100..1000&display=swap">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..24,400,0..1,0&amp;icon_names=add,all_inclusive,arrow_forward,bedtime,brightness_auto,calendar_add_on,calendar_month,check,chevron_left,chevron_right,child_care,church,close,confirmation_number,content_copy,dark_mode,date_range,east,event,event_available,event_busy,event_upcoming,expand_more,festival,forest,forum,history,hourglass_bottom,light_mode,link,local_activity,location_city,location_on,map,movie,museum,music_note,new_releases,nightlife,open_in_new,palette,radar,redeem,schedule,search,sports_soccer,theater_comedy,today,visibility,weekend,west&amp;display=block">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..24,400,0..1,0&amp;icon_names=add,all_inclusive,arrow_forward,bedtime,brightness_auto,calendar_add_on,calendar_month,check,chevron_left,chevron_right,child_care,church,close,confirmation_number,content_copy,dark_mode,date_range,east,event,event_available,event_busy,event_upcoming,expand_more,festival,forest,forum,history,hourglass_bottom,light_mode,link,local_activity,location_city,location_on,map,movie,museum,music_note,new_releases,nightlife,open_in_new,palette,radar,redeem,schedule,search,sports_soccer,theater_comedy,today,visibility,weekend,west,zoom_in,zoom_out&amp;display=block">
 <style>
 /* ============================================================
    Variant C - "Plakat". Ink-on-paper neutrals + 11 category hues.
@@ -45,6 +45,7 @@
    sport 150°, dzieci 188°, uroczystości 222°, spotkania 262°,
    teatr 298°, koncerty 340°, inne = neutral slate.
    ============================================================ */
+/* TOKENS-START (event pages reuse everything up to TOKENS-END, see seo.py) */
 :root{
   --surface:#faf8f5; --surface-c-lowest:#ffffff; --surface-c-low:#f4f1ed; --surface-c:#eeebe7;
   --surface-c-high:#e8e5e1; --surface-c-highest:#e2dfdb;
@@ -114,6 +115,7 @@
   --k-koncerty:#542446;--ko-koncerty:#fed7f0;--ka-koncerty:#f59cd8;--koa-koncerty:#340f29;
   --k-inne:#303943;--ko-inne:#dde6ee;--ka-inne:#afc0d2;--koa-inne:#192027;
   color-scheme:dark}
+/* TOKENS-END */
 
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
@@ -559,6 +561,32 @@ dialog:focus,dialog:focus-visible,.sheet:focus{outline:none}
 .toast{position:fixed;left:50%;bottom:max(24px,env(safe-area-inset-bottom,0px));transform:translate(-50%,calc(100% + 48px));visibility:hidden;background:var(--inverse);color:var(--on-inverse);
   padding:14px 18px;border-radius:8px;transition:transform .35s var(--ease-dec);z-index:50;font-size:14px;box-shadow:var(--shadow-2);max-width:calc(100vw - 32px)}
 .toast.show{transform:translate(-50%,0);visibility:visible}
+
+/* LIGHTBOX-CSS-START (event pages reuse everything up to LIGHTBOX-CSS-END, see seo.py)
+   Picture viewer: full screen, the picture fitted; zoomed in it scrolls (drag or swipe). Selectors beat
+   the generic dialog rules above (bottom sheet on phones) by specificity. */
+[data-zoom]:not(.noimg){cursor:zoom-in}
+html:has(dialog.lb[open]){overflow:hidden}
+dialog.lb[open]{position:fixed;inset:0;margin:0;width:100vw;height:100vh;height:100dvh;max-width:none;max-height:none;padding:0;border:0;
+  background:transparent;overflow:hidden}
+dialog.lb::backdrop{background:rgb(12 11 10 / .9);animation:lbFade .25s}
+.lb-view{position:absolute;inset:0;overflow:auto;overscroll-behavior:contain;scrollbar-width:none;display:grid}
+.lb-view::-webkit-scrollbar{display:none}
+.lb-view img{margin:auto;display:block;max-width:none;cursor:zoom-in;user-select:none;-webkit-user-select:none;-webkit-user-drag:none;
+  border-radius:6px;box-shadow:0 16px 56px rgb(0 0 0 / .55);animation:lbIn .3s cubic-bezier(.05,.7,.1,1)}
+dialog.lb.max .lb-view img{cursor:grab}
+dialog.lb.out .lb-view img{cursor:zoom-out}
+dialog.lb.panning .lb-view img{cursor:grabbing}
+.lb-x,.lb-zoom{position:fixed;z-index:2;background:rgb(0 0 0 / .55);color:#fff;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.lb-x{top:max(12px,env(safe-area-inset-top,0px));right:12px;width:44px;height:44px;border-radius:22px;border:0;display:grid;place-items:center;cursor:pointer}
+.lb-zoom{left:50%;bottom:max(16px,env(safe-area-inset-bottom,0px));transform:translateX(-50%);display:flex;gap:2px;padding:4px;border-radius:26px}
+.lb-zoom button{width:44px;height:44px;border-radius:22px;border:0;background:transparent;color:inherit;display:grid;place-items:center;cursor:pointer}
+.lb-x:hover,.lb-zoom button:hover{background:rgb(255 255 255 / .16)}
+.lb-zoom button:disabled{opacity:.35;cursor:default;background:transparent}
+.lb-x .ms,.lb-zoom .ms{font-size:24px}
+@keyframes lbFade{from{opacity:0}}
+@keyframes lbIn{from{transform:scale(.96);opacity:0}}
+/* LIGHTBOX-CSS-END */
 
 /* ---------- responsive ---------- */
 @media (max-width:1100px){
@@ -1400,7 +1428,7 @@ function openEvent(id, fromHash) {
   const T = todayKey();
   const rel = e.sk === T ? relHTML(e) : e.sk === addDays(T, 1) ? `<span class="rel">jutro</span>` : e.sk > T ? `<span class="rel">za ${diffDays(T, e.sk)} dni</span>` : "";
   sheet.innerHTML = `<div class="handle"></div>
-    <div class="hero${e.img ? "" : " noimg"}" style="${catVars(e.cat)}">
+    <div class="hero${e.img ? "" : " noimg"}" style="${catVars(e.cat)}"${e.img ? ` data-zoom="${esc(e.img)}" data-alt="${esc(e.t)}" role="button" tabindex="0" aria-label="Powiększ zdjęcie"` : ""}>
       ${e.img ? `<img class="bg" src="${esc(e.img)}" alt="" referrerpolicy="no-referrer" onerror="imgFail(this)"><img class="fg" src="${esc(e.img)}" alt="" referrerpolicy="no-referrer" onerror="imgFail(this)">` : ""}
       <span class="ms glyph" aria-hidden="true">${ICONS[e.cat]}</span>
     </div>
@@ -1416,7 +1444,7 @@ function openEvent(id, fromHash) {
         ${e.loc ? `<span class="ms">location_on</span><div>${esc(e.loc)}${map ? `<div class="sub"><a href="${map}" target="_blank" rel="noopener">Pokaż w Mapach Google</a>${osm ? ` · <a href="${osm}" target="_blank" rel="noopener">OpenStreetMap</a>` : ""}</div>` : ""}</div>` : ""}
         ${e.p ? `<span class="ms">confirmation_number</span><div>${esc(e.p)} ${priceHTML(e.p).includes("free") ? `<span class="price free" style="margin-left:6px">Bezpłatne</span>` : ""}</div>` : ""}
       </div>
-      ${e.d ? `<p class="desc">${linkify(e.d)}${e.dm ? `<a class="more" href="${esc(e.src[0][1])}" target="_blank" rel="noopener">Czytaj więcej<span class="ms">open_in_new</span></a>` : ""}</p>` : ""}
+      ${e.d ? `<p class="desc">${linkify(e.d)}${e.dm ? `<a class="more" href="${esc(e.src[0][1])}" target="_blank" rel="noopener">Czytaj dalej<span class="ms">open_in_new</span></a>` : ""}</p>` : ""}
       <div class="h4">Źródła · ${e.src.length}</div>
       <div class="srcs">${e.src.map(([n, u], i) => { let hn = ""; try { hn = new URL(u).hostname.replace(/^www\./, ""); } catch {}
         return `<a href="${esc(u)}" target="_blank" rel="noopener" class="sl">${favHTML(u, n)}<div><b>${esc(n)}</b><small>${esc(hn)}</small></div>${i === 0 ? `<span class="pri">główne</span>` : ""}<span class="ms" style="color:var(--on-surface-var)">open_in_new</span></a>`; }).join("")}</div>
@@ -1487,6 +1515,99 @@ function copyText(text, msg) {
   };
   if (navigator.clipboard?.writeText) navigator.clipboard.writeText(text).then(() => toast(msg), fallback); else fallback();
 }
+
+// LIGHTBOX-JS-START (event pages reuse this block up to LIGHTBOX-JS-END, see seo.py: no globals from this page)
+// Picture viewer. A [data-zoom] element (the poster) opens its picture full screen. Click zooms in where you
+// click, Ctrl+click (⌘+click) zooms out, the mouse drags a zoomed picture, fingers scroll it. Clicking beside
+// the picture, the X or Esc closes; the buttons at the bottom zoom too (touch screens have no Ctrl).
+const LB = (() => {
+  const LEVELS = [1, 2, 4];  // × the fitted size
+  let dlg, view, img, nat = [1, 1], fit = 1, z = 1, drag = null;
+  function build() {
+    dlg = document.createElement("dialog");
+    dlg.className = "lb";
+    dlg.setAttribute("aria-label", "Zdjęcie");
+    dlg.innerHTML = `<div class="lb-view"></div>
+      <button class="lb-x" type="button" aria-label="Zamknij"><span class="ms">close</span></button>
+      <div class="lb-zoom"><button type="button" data-z="-1" aria-label="Pomniejsz"><span class="ms">zoom_out</span></button><button type="button" data-z="1" aria-label="Powiększ"><span class="ms">zoom_in</span></button></div>`;
+    document.body.append(dlg);
+    view = dlg.querySelector(".lb-view");
+    dlg.querySelector(".lb-x").onclick = () => dlg.close();
+    dlg.querySelectorAll("[data-z]").forEach(b => b.onclick = () => zoom(+b.dataset.z));
+    view.addEventListener("click", ev => {
+      if (drag?.moved) return;
+      if (ev.target !== img) return dlg.close();  // beside the picture
+      zoom(ev.ctrlKey || ev.metaKey ? -1 : 1, ev);
+    });
+    // macOS turns Ctrl+click into a right click: no click event comes, a contextmenu does.
+    view.addEventListener("contextmenu", ev => { if (ev.target === img && ev.ctrlKey) { ev.preventDefault(); zoom(-1, ev); } });
+    view.addEventListener("pointerdown", ev => {
+      if (ev.pointerType === "mouse" && ev.button === 0) drag = {x: ev.clientX, y: ev.clientY, l: view.scrollLeft, t: view.scrollTop, moved: false};
+    });
+    addEventListener("pointermove", ev => {
+      if (!drag) return;
+      const dx = ev.clientX - drag.x, dy = ev.clientY - drag.y;
+      if (!drag.moved && Math.hypot(dx, dy) < 5) return;
+      drag.moved = true;
+      dlg.classList.add("panning");
+      view.scrollLeft = drag.l - dx; view.scrollTop = drag.t - dy;
+    });
+    addEventListener("pointerup", () => { dlg.classList.remove("panning"); setTimeout(() => drag = null); });  // after the click
+    const mod = ev => dlg.open && dlg.classList.toggle("out", (ev.ctrlKey || ev.metaKey) && z > 1);
+    addEventListener("keydown", mod); addEventListener("keyup", mod);
+    addEventListener("resize", () => { if (dlg.open) { measure(); apply(); } });
+    dlg.addEventListener("close", () => view.replaceChildren());
+  }
+  function measure() {
+    const pad = innerWidth < 600 ? 12 : 56;
+    fit = Math.min((innerWidth - 2 * pad) / nat[0], (innerHeight - 2 * pad) / nat[1], 3);  // small pictures up to 3×
+  }
+  function apply() {
+    img.style.width = nat[0] * fit * z + "px";
+    img.style.height = nat[1] * fit * z + "px";
+    const max = z === LEVELS[LEVELS.length - 1];
+    dlg.classList.toggle("max", max);
+    dlg.querySelector('[data-z="-1"]').disabled = z === LEVELS[0];
+    dlg.querySelector('[data-z="1"]').disabled = max;
+  }
+  function zoom(dir, ev) {
+    const i = LEVELS.indexOf(z) + dir;
+    if (i < 0 || i >= LEVELS.length) return;
+    // The point under the cursor (buttons: the middle of the screen) stays where it is.
+    const r = img.getBoundingClientRect();
+    const cx = ev ? ev.clientX : innerWidth / 2, cy = ev ? ev.clientY : innerHeight / 2;
+    const px = Math.min(1, Math.max(0, (cx - r.left) / r.width)), py = Math.min(1, Math.max(0, (cy - r.top) / r.height));
+    z = LEVELS[i];
+    apply();
+    view.scrollLeft = img.offsetLeft + px * img.offsetWidth - cx;
+    view.scrollTop = img.offsetTop + py * img.offsetHeight - cy;
+    dlg.classList.toggle("out", !!ev && (ev.ctrlKey || ev.metaKey) && z > 1);
+  }
+  function open(src, alt) {
+    if (!dlg) build();
+    z = 1;
+    img = new Image();
+    img.referrerPolicy = "no-referrer";  // as on the page: some sites refuse hotlinked pictures
+    img.alt = alt || "";
+    img.draggable = false;
+    img.style.opacity = "0";
+    const ready = () => { nat = [img.naturalWidth || 800, img.naturalHeight || 600]; measure(); apply(); img.style.opacity = ""; };
+    img.onload = ready;
+    img.src = src;
+    view.replaceChildren(img);
+    if (img.complete && img.naturalWidth) ready();
+    dlg.classList.remove("out", "max", "panning");
+    dlg.showModal();
+  }
+  const target = ev => { const t = ev.target.closest?.("[data-zoom]"); return t && !t.classList.contains("noimg") ? t : null; };
+  document.addEventListener("click", ev => { const t = target(ev); if (t) open(t.dataset.zoom, t.dataset.alt); });
+  document.addEventListener("keydown", ev => {
+    const t = (ev.key === "Enter" || ev.key === " ") && target(ev);
+    if (t) { ev.preventDefault(); open(t.dataset.zoom, t.dataset.alt); }
+  });
+  return {open};
+})();
+// LIGHTBOX-JS-END
 
 // ================= add-to-calendar sheet =================
 // A small wizard: 1) a region or one source → 2) which region / which source → 3) (region only) everything

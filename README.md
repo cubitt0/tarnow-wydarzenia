@@ -170,6 +170,11 @@ i stronę z kalendarzem.
 - RSS: do AI trafiają tylko nowe artykuły, które zawierają datę lub godzinę i nie są „śmieciami”
   (wypadki, promocje, sesje rad). Do 40 tys. znaków w jednym zapytaniu.
 - Roczne kalendarze PDF: jedno zapytanie na nowy plik.
+- Opisy wydarzeń z kilku źródeł: gdy dwa lub więcej źródeł podaje różne teksty o tym samym wydarzeniu, Gemini
+  pisze z nich jeden opis (bez emoji i myślników, tylko fakty z tekstów). Osobny limit **15 zapytań dziennie**
+  (`TE_AI_DESC_DAILY_LIMIT`), ok. 10 wydarzeń w jednym zapytaniu, najbliższe najpierw. Odpowiedź jest zapisywana
+  w cache (`cache/ai/descriptions.json`), więc nowe zapytanie idzie dopiero, gdy któreś źródło zmieni tekst.
+  Bez odpowiedzi (brak klucza, limit, błąd) zostaje opis z głównego źródła.
 
 ## Uruchomienie lokalne (Docker)
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict
@@ -11,6 +12,7 @@ from html import escape
 
 from . import archive
 from .ai import gemini
+from .describe import improve_descriptions
 from .categorize import categorize, is_junk
 from .config import Settings, SourceConfig, load_sources
 from .dedup import deduplicate
@@ -155,9 +157,11 @@ def run(settings: Settings, only: set[str] | None = None, use_ai: bool = True) -
         if not e.in_main and not e.tickets:
             e.tickets = free_ticket(e)
     apply_tickets_fallback(merged, configs)
+    # Events several sources report: one description written from all their texts (Gemini, cached).
+    ai = gemini(settings)
+    desc_stats = improve_descriptions(merged, ai, now)
 
     write_outputs(settings, merged, configs, stats)
-    ai = gemini(settings)
     summary = {
         "generated_at": now.isoformat(),
         "raw_events": len(events),
@@ -169,6 +173,8 @@ def run(settings: Settings, only: set[str] | None = None, use_ai: bool = True) -
         "ai_daily_limit": ai.daily_limit,
         "ai_cache_hits": ai.cache_hits,
         "ai_stale_reuses": ai.stale_reuses,
+        "ai_desc_calls": ai.desc_calls,
+        **desc_stats,
         "geocoder_lookups": geo.lookups,
         **img_stats,
         "seconds": round(time.monotonic() - t0, 1),
@@ -181,7 +187,18 @@ def run(settings: Settings, only: set[str] | None = None, use_ai: bool = True) -
     return summary
 
 
-DESC_CHARS = 700
+DESC_CHARS = 1200  # room for the AI's multi-source descriptions (describe.py), up to 1200
+
+
+# A source that sends only the start of its text marks the cut ("...", "…", "[…]") - the rest is on its page.
+_SOURCE_CUT = re.compile(r"(\.\.\.|…|\[(…|\.\.\.)\])\s*$")
+
+
+def desc_cut(text: str | None) -> bool:
+    """Is the description incomplete (cut by us or by the source)? Then the page links to the main source with
+    "Czytaj dalej". Short texts ending in "..." are taken as style, not a cut."""
+    text = (text or "").strip()
+    return len(text) > DESC_CHARS or (len(text) >= 100 and bool(_SOURCE_CUT.search(text)))
 
 
 def short_desc(text: str | None) -> str | None:
@@ -273,6 +290,7 @@ def write_outputs(settings: Settings, events: list[Event], configs: list[SourceC
         d["end"] = e.end.isoformat() if e.end else None
         d["sources"] = [asdict(r) for r in e.all_sources()]
         d.pop("source")
+        d.pop("source_texts")  # input for describe.py, not data to publish
         return d
 
     (out / "events.json").write_text(json.dumps([ev_json(e) for e in events], ensure_ascii=False, indent=1))
@@ -347,7 +365,7 @@ def calendar_json(events: list[Event], feeds: list[dict], pages: dict[str, str] 
             "geo": [round(e.lat, 5), round(e.lon, 5)] if e.lat is not None else None,
             "c": e.categories,
             "d": short_desc(e.description),
-            "dm": len(e.description or "") > DESC_CHARS,  # cut: the page offers "Czytaj więcej"
+            "dm": desc_cut(e.description),  # cut: the page offers "Czytaj dalej" to the main source
             "p": e.price,
             "img": e.image,
             "tk": e.tickets,

@@ -766,3 +766,74 @@ def test_archive_keeps_past_pages_and_tells_removed_from_source_down(tmp_path):
     assert write_seo(tmp_path, "https://example.pl", [later], now, arch)["later@x"] == pages["later@x"]
     write_seo(tmp_path, "https://example.pl", [later], T + timedelta(days=367), arch)
     assert "held@x" not in arch and not (tmp_path / first["held@x"]).exists()
+
+
+def test_merge_keeps_every_sources_text():
+    a = ev("Kult – koncert", T, src="ebilet", prio=40)
+    b = ev("KULT", T, src="venue", prio=70)
+    a.description, b.description = "Koncert zespołu Kult. Bilety w sprzedaży.", "Kult zagra największe przeboje."
+    merged = deduplicate([a, b], {})
+    assert len(merged) == 1
+    assert merged[0].source_texts == [("VENUE", "Kult zagra największe przeboje."),
+                                      ("EBILET", "Koncert zespołu Kult. Bilety w sprzedaży.")]
+    assert merged[0].description == "Kult zagra największe przeboje."  # the main source's, until AI rewrites it
+
+
+def test_description_texts_and_cleanup():
+    from tarnow_events.describe import clean, distinct_texts
+
+    e = ev("Mamoteka", T)
+    e.source_texts = [("Portal", "Dziś spotkanie Mamoteki…"),
+                      ("Biblioteka", "Dziś spotkanie Mamoteki w bibliotece. Zabawy dla dzieci do 3 lat."),
+                      ("Miasto", "Zapisy pod numerem telefonu biblioteki.")]
+    assert [n for n, _ in distinct_texts(e)] == ["Biblioteka", "Miasto"]  # the lead repeats the article
+    out = clean("🎉 **Koncert** zespołu — wielkie przeboje – i nowe utwory 🎸. Więcej: https://x.pl/a\n\nGodziny 18:00–20:00.")
+    assert out == "Koncert zespołu, wielkie przeboje, i nowe utwory. Więcej:\n\nGodziny 18:00–20:00."
+    assert clean("🎉🎉 —") is None
+
+
+def test_ai_descriptions_cached_and_fallback(tmp_path):
+    from tarnow_events.describe import improve_descriptions
+
+    class FakeAI:
+        enabled, cache_dir = True, tmp_path
+
+        def __init__(self, answer):
+            self.answer, self.calls = answer, []
+
+        def describe(self, items):
+            self.calls.append(items)
+            return None if self.answer is None else {it["id"]: self.answer for it in items}
+
+    def event():
+        e = ev("Kult", T)
+        e.description = "Koncert zespołu Kult."
+        e.source_texts = [("A", "Koncert zespołu Kult."), ("B", "Kult zagra w Tarnowie przeboje z płyty Ostateczny krach.")]
+        return e
+
+    now = T - timedelta(days=1)
+    single = ev("Solo", T)
+    single.description, single.source_texts = "Tylko jedno źródło.", [("A", "Tylko jedno źródło.")]
+    e = event()
+    stats = improve_descriptions([e, single], FakeAI("Zespół Kult zagra w Tarnowie przeboje — także z płyty Ostateczny krach 🎸."), now)
+    assert e.description == "Zespół Kult zagra w Tarnowie przeboje, także z płyty Ostateczny krach."
+    assert single.description == "Tylko jedno źródło." and stats["descriptions_new"] == 1
+    # Blocked the next day: the cached answer still applies.
+    again = event()
+    blocked = FakeAI(None)
+    improve_descriptions([again], blocked, now)
+    assert again.description == e.description and not blocked.calls
+    # A source changed its text and the AI is blocked: the main source's description stays.
+    changed = event()
+    changed.source_texts[1] = ("B", "Nowy tekst o koncercie zespołu Kult w Tarnowie.")
+    stats = improve_descriptions([changed], blocked, now)
+    assert changed.description == "Koncert zespołu Kult." and stats["descriptions_waiting"] == 1
+
+
+def test_desc_cut_by_us_or_by_source():
+    from tarnow_events.pipeline import DESC_CHARS, desc_cut
+
+    lead = "Po gorąco przyjętej trasie The Best Of zapraszamy na drugą odsłonę koncertów z utworami jego idoli - Ciechowskiego, Wodec..."
+    assert desc_cut(lead) and desc_cut(lead[:-3] + "…") and desc_cut(lead[:-3] + " […]")
+    assert desc_cut("Słowo " * (DESC_CHARS // 5))  # too long: we cut it
+    assert not desc_cut("Zapraszamy...") and not desc_cut(lead[:-3] + ".") and not desc_cut(None)

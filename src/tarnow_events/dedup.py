@@ -232,6 +232,13 @@ def _richness(e: Event) -> int:
 def merge(cluster: list[Event]) -> Event:
     cluster = sorted(cluster, key=lambda e: (e.priority, _richness(e)), reverse=True)
     primary = cluster[0]
+    # Every source's own text, read before the loop below swaps the primary's description for a longer one.
+    texts: list[tuple[str, str]] = []
+    for e in cluster:
+        for name, text in e.source_texts or ([(e.source.source_name, e.description)] if e.description else []):
+            if text.strip() and all(text != t for _, t in texts):
+                texts.append((name, text))
+    primary.source_texts = texts
     for other in cluster[1:]:
         for f in ("description", "location_name", "address", "town", "lat", "lon", "image", "price", "tickets", "end"):
             if getattr(primary, f) in (None, "") and getattr(other, f) not in (None, ""):

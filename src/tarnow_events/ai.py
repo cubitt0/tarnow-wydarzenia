@@ -82,6 +82,44 @@ Tekst:
 # Changes whenever the prompt or schema changes, so cached answers made under old rules are not reused.
 PROMPT_VERSION = hashlib.sha256((PROMPT + json.dumps(EVENT_SCHEMA, sort_keys=True)).encode()).hexdigest()[:10]
 
+# One description written from what several sources say about the same event (describe.py).
+DESC_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "items": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {"id": {"type": "string"}, "description": {"type": "string"}},
+                "required": ["id", "description"],
+            },
+        }
+    },
+    "required": ["items"],
+}
+
+DESC_PROMPT = """Piszesz opisy wydarzeń do publicznego kalendarza "Wydarzenia Tarnów".
+Każde wydarzenie poniżej opisuje kilka stron. Dla każdego napisz JEDEN opis po polsku na podstawie ich tekstów.
+
+Zasady:
+- Tylko fakty z podanych tekstów. Niczego nie dopisuj, nie zgaduj i nie oceniaj. Nie uzupełniaj imion, nazw
+  ani faktów z własnej wiedzy (jeśli tekst podaje samo nazwisko, zostaw samo nazwisko).
+- Połącz to, co najciekawsze ze wszystkich źródeł: o czym jest wydarzenie, kto występuje, program, dla kogo,
+  zapisy, co zabrać. Bez powtórzeń.
+- Pomiń datę, godzinę, adres i cenę, chyba że teksty podają coś więcej (kilka terminów, harmonogram, ulgi).
+- Jeśli źródła sobie przeczą, pomiń tę informację.
+- Długość zależna od tego, ile mówią źródła: od 2 zdań do 2 lub 3 akapitów, najwyżej 1200 znaków.
+  Akapity oddziel pustą linią. Zwykły tekst: bez Markdown, nagłówków, list i linków.
+- Bez emoji i innych symboli graficznych.
+- Bez zwrotów reklamowych typu "nie przegap", "serdecznie zapraszamy", "wyjątkowe wydarzenie".
+- Język rzeczowy i naturalny, w trzeciej osobie.
+- Pole id przepisz dokładnie z nagłówka wydarzenia.
+
+Wydarzenia:
+"""
+
+DESC_VERSION = hashlib.sha256((DESC_PROMPT + json.dumps(DESC_SCHEMA, sort_keys=True)).encode()).hexdigest()[:10]
+
 
 class Gemini:
     def __init__(self, settings: Settings):
@@ -96,6 +134,9 @@ class Gemini:
         self.last_ok = True  # did the last extract_events call get a real (or cached) answer?
         # Daily cap across all runs of the day (pushes, manual runs), persisted next to the cache.
         self.daily_limit = settings.ai_daily_limit
+        # Descriptions (describe.py) have their own, smaller allowance: they must not take the sources' calls.
+        self.desc_daily_limit = settings.ai_desc_daily_limit
+        self.desc_calls = 0
         self._usage_path = self.cache_dir / "usage.json"
         self._pages_path = self.cache_dir / "pages.json"
         try:
@@ -125,9 +166,12 @@ class Gemini:
     def budget_left(self) -> bool:
         return self.enabled and self.calls < self.max_calls and self.calls_today() < self.daily_limit
 
-    def _count_call(self) -> None:
+    def desc_budget_left(self) -> bool:
+        return self.enabled and self._usage().get("desc", 0) < self.desc_daily_limit
+
+    def _count_call(self, kind: str = "calls") -> None:
         u = self._usage()
-        u["calls"] += 1
+        u[kind] = u.get(kind, 0) + 1
         self._usage_path.write_text(json.dumps(u))
 
     # ---- per-page memory: what the AI last said about a page, and when -------------------
@@ -192,25 +236,47 @@ class Gemini:
         self.save(key, events)
         return events
 
-    def _generate(self, prompt: str, extra_parts: list[dict] | None = None) -> dict | None:
+    def describe(self, items: list[dict]) -> dict[str, str] | None:
+        """items: {id, title, texts: [(source name, text)]}. Returns id -> description, or None when
+        no answer came (no key, budget used up, quota or network error): the caller keeps what it has."""
+        blocks = []
+        for it in items:
+            texts = "\n\n".join(f"[{name}]\n{text}" for name, text in it["texts"])
+            blocks.append(f"### id: {it['id']}\nTytuł: {it['title']}\n{texts}")
+        result = self._generate(DESC_PROMPT + "\n\n".join(blocks), schema=DESC_SCHEMA, desc=True)
+        if result is None:
+            return None
+        return {str(r.get("id", "")).strip(): r.get("description") or "" for r in result.get("items", [])}
+
+    def _generate(self, prompt: str, extra_parts: list[dict] | None = None, *, schema: dict = EVENT_SCHEMA,
+                  desc: bool = False) -> dict | None:
+        """desc: a describe() call, counted against the descriptions' own allowance."""
         if not self.key:
             return None
+        budget_left = self.desc_budget_left if desc else self.budget_left
         with self._lock:  # serialise: the free tier is ~15 requests/minute per project
-            if not self.budget_left():
-                log.warning("AI budget exhausted (run %d/%d, today %d/%d); reusing previous answers",
-                            self.calls, self.max_calls, self.calls_today(), self.daily_limit)
+            if not budget_left():
+                if desc:
+                    log.info("AI description budget used up (%d/day); sources' own descriptions stay",
+                             self.desc_daily_limit)
+                else:
+                    log.warning("AI budget exhausted (run %d/%d, today %d/%d); reusing previous answers",
+                                self.calls, self.max_calls, self.calls_today(), self.daily_limit)
                 return None
             for attempt, model in ((a, m) for m in self.models for a in range(3)):
                 if model in self._exhausted:
                     continue
-                if not self.budget_left():  # retries count too
+                if not budget_left():  # retries count too
                     return None
                 wait = 4.5 - (time.monotonic() - self._last_call)
                 if wait > 0:
                     time.sleep(wait)
                 self._last_call = time.monotonic()
-                self.calls += 1
-                self._count_call()
+                if desc:
+                    self.desc_calls += 1
+                else:
+                    self.calls += 1
+                self._count_call("desc" if desc else "calls")
                 try:
                     resp = httpx.post(
                         BASE.format(model=model),
@@ -221,7 +287,7 @@ class Gemini:
                             "generationConfig": {
                                 "temperature": 0,
                                 "responseMimeType": "application/json",
-                                "responseSchema": EVENT_SCHEMA,
+                                "responseSchema": schema,
                             },
                         },
                         timeout=120,

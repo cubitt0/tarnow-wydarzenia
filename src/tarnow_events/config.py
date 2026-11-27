@@ -41,6 +41,7 @@ class Settings:
     public_base_url: str
     adsense_client: str | None = None  # ca-pub-…; with adsense_slot turns on the banner (ads.py)
     adsense_slot: str | None = None
+    ai_desc_daily_limit: int = 15  # Gemini requests/day for merged events' descriptions (describe.py)
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -59,6 +60,8 @@ class Settings:
             # Hard cap per calendar day across all runs. Free tier for flash-lite is ~500/day;
             # this keeps the project at a fraction of the key's quota.
             ai_daily_limit=int(os.environ.get("TE_AI_DAILY_LIMIT", "60")),
+            # Separate cap for merged events' descriptions (describe.py), about 10 events per request.
+            ai_desc_daily_limit=int(os.environ.get("TE_AI_DESC_DAILY_LIMIT", "15")),
             radius_km=float(os.environ.get("TE_RADIUS_KM", "50")),
             days_back=int(os.environ.get("TE_DAYS_BACK", "7")),
             days_ahead=int(os.environ.get("TE_DAYS_AHEAD", "365")),

@@ -36,6 +36,7 @@ MAX_OLD_PATHS = 5
 
 def dump(e: Event) -> dict:
     d = asdict(e)
+    d.pop("source_texts")  # only needed while building
     d["start"] = e.start.isoformat()
     d["end"] = e.end.isoformat() if e.end else None
     return d
