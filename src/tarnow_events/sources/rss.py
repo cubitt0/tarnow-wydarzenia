@@ -10,7 +10,9 @@ from datetime import datetime, timedelta
 import feedparser
 
 from .. import http
-from ..ai import PROMPT_VERSION, gemini
+from selectolax.lexbor import LexborHTMLParser as HTMLParser
+
+from ..ai import LEGACY_PROMPT_VERSIONS, PROMPT_VERSION, gemini
 from ..htmltext import html_to_text
 from ..models import TZ
 from ..categorize import is_junk
@@ -45,7 +47,12 @@ class RssSource(Source):
       max_age_days: ignore items published longer ago than this (default 30)
       fetch_full: also fetch each item's page for the full text (default false)
       max_items: newest N items considered per run (default 40)
-      format: "wp_json" when `url` is a WordPress /wp-json/wp/v2/posts endpoint instead of a feed
+      format: "wp_json" when `url` is a WordPress /wp-json/wp/v2/posts endpoint instead of a feed;
+        "html_links" when `url` is a news page with no feed: its links matching `follow` (regex) are the
+        items, and each one's page is read for the text (fetch_full is implied)
+      follow: (html_links) regex for the article links on the page
+      article_selector: CSS selector for the article on its page (fetch_full), so menus do not use up the
+        6000 characters sent along
 
     Items with a junk title (accidents, promotions, council sessions) or without any date or time
     in their text are dropped before the AI sees them.
@@ -58,12 +65,19 @@ class RssSource(Source):
         opts = self.cfg.options
         if opts.get("format") == "wp_json":
             feed = _wp_json_feed(http.get(self.cfg.url, bare=True).json())
+        elif opts.get("format") == "html_links":
+            feed = _html_links_feed(http.get(self.cfg.url).text, self.cfg.url, opts["follow"])
         else:
             feed = feedparser.parse(http.get(self.cfg.url, insecure=bool(opts.get("insecure_tls"))).content)
         cutoff = datetime.now(TZ) - timedelta(days=int(opts.get("max_age_days", 30)))
 
         index_path = ai.cache_dir / f"rss-index-{self.cfg.id}-{PROMPT_VERSION}.json"
         index: dict[str, str] = json.loads(index_path.read_text()) if index_path.exists() else {}
+        # Items read under an earlier prompt keep their answers (articles do not change); new ones get the new prompt.
+        for old in LEGACY_PROMPT_VERSIONS:
+            old_path = ai.cache_dir / f"rss-index-{self.cfg.id}-{old}.json"
+            if old_path.exists():
+                index = {**json.loads(old_path.read_text()), **index}
 
         batch_keys: list[str] = []  # batches whose cached answers cover already-seen items
         fresh: list[tuple[str, str]] = []  # (item key, text) never sent to the AI
@@ -79,9 +93,10 @@ class RssSource(Source):
             body = entry.get("summary", "")
             if entry.get("content"):
                 body = entry.get("content")[0].get("value", body)
-            if opts.get("fetch_full") and entry.get("link"):
+            if (opts.get("fetch_full") or opts.get("format") == "html_links") and entry.get("link"):
                 try:
-                    body = html_to_text(http.get(entry.get("link")).text, entry.get("link"))[:6000]
+                    body = html_to_text(http.get(entry.get("link")).text, entry.get("link"),
+                                        opts.get("article_selector"))[:6000]
                 except Exception as e:
                     log.info("%s: full text %s failed: %s", self.cfg.id, entry.get("link"), e)
             block = (
@@ -190,6 +205,23 @@ class RssSource(Source):
             if mentions:
                 return max(mentions)[1]
         return url
+
+
+def _html_links_feed(html: str, base: str, follow: str):
+    """A news page with no feed (format: html_links) → feed entries: each link matching `follow`, with its
+    headline. The text is read from the article itself (fetch_full)."""
+    from types import SimpleNamespace
+
+    pattern = re.compile(follow)
+    entries: dict[str, dict] = {}
+    for a in HTMLParser(html).css("a[href]"):
+        href = absolutize(a.attributes.get("href"), base)
+        if not href or not pattern.search(href):
+            continue
+        title = " ".join(a.text().split())
+        if href not in entries or (title and not entries[href]["title"]):  # a picture link has no headline
+            entries[href] = {"title": title, "link": href, "summary": ""}
+    return SimpleNamespace(entries=list(entries.values()))
 
 
 def _wp_json_feed(posts: list[dict]):

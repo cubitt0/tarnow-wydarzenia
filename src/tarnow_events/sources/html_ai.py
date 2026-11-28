@@ -5,7 +5,7 @@ import logging
 import time
 
 from .. import http
-from ..ai import PROMPT_VERSION, gemini
+from ..ai import LEGACY_PROMPT_VERSIONS, PROMPT_VERSION, gemini
 from ..htmltext import chunks, html_to_text
 from .base import Source, absolutize
 from .jsonld import JsonLdSource, extract_jsonld_events
@@ -44,9 +44,14 @@ class HtmlAiSource(Source):
                 log.info("%s: page %s has almost no text (JS-rendered?)", self.cfg.id, page)
                 continue
 
-            page_key = hashlib.sha256(f"{PROMPT_VERSION}|{self.cfg.id}|{page}".encode()).hexdigest()[:24]
+            def key(version: str) -> str:
+                return hashlib.sha256(f"{version}|{self.cfg.id}|{page}".encode()).hexdigest()[:24]
+
+            page_key = key(PROMPT_VERSION)
             text_hash = hashlib.sha256(text.encode()).hexdigest()[:24]
-            state = ai.page_state(page_key)
+            # The answer under an earlier prompt counts as this page's last one: reused while the page is
+            # unchanged, re-read under the new prompt (when allowed) once it changes.
+            state = next((st for v in (PROMPT_VERSION, *LEGACY_PROMPT_VERSIONS) if (st := ai.page_state(key(v)))), None)
             previous = ai.load(state["result"]) if state else None
 
             if state and state["text"] == text_hash and previous is not None:

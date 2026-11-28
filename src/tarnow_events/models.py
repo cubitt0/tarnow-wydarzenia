@@ -59,9 +59,12 @@ class Event:
     priority: int = 50
     # False for high-volume sources (cinema showtimes): category/source feeds only, not the main ones.
     in_main: bool = True
-    # Filled by dedup: (source name, its own description) of every merged source that had one, primary
-    # first. describe.py writes one description from them. Not published (events.json, archive).
-    source_texts: list[tuple[str, str]] = field(default_factory=list)
+    # Filled by dedup: (source id, source name, its own description) of every merged source that had one,
+    # primary first. describe.py writes one description from them. Not published (events.json, archive).
+    source_texts: list[tuple[str, str, str]] = field(default_factory=list)
+    # The description is not the whole story: it was cut (by us or the source), shortened by AI, or the main
+    # source asks for it (read_more: always). The page then links "Czytaj dalej" to the main source.
+    desc_more: bool = False
 
     @property
     def day(self) -> date:

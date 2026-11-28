@@ -126,6 +126,8 @@ def run(settings: Settings, only: set[str] | None = None, use_ai: bool = True) -
         if is_junk(ev.title):
             dropped["junk"] += 1
             continue
+        if cfg.options.get("excerpt"):
+            ev.description = mark_excerpt(ev.description)
         ev.town = correct_tarnow(canonical_town(ev.town), " ".join(p for p in (ev.location_name, ev.address) if p))
         infer_time(ev)
         infer_free(ev)
@@ -148,6 +150,9 @@ def run(settings: Settings, only: set[str] | None = None, use_ai: bool = True) -
     uid_state: dict[str, str] = {}
     if state_path.exists():
         uid_state = json.loads(state_path.read_text()).get("uids", {})
+    # Events the last build published (their UIDs): only new ones get a long text shortened by AI. No state
+    # (first build, failed download) counts nothing as new, so the whole calendar is not rewritten at once.
+    published_before = set(uid_state.values())
     merged = deduplicate(kept, uid_state)
     # Pictures and ticket links from the events' own pages (cinema has posters already; skip it).
     img_stats = enrich_images([e for e in merged if e.in_main], settings.cache_dir,
@@ -157,9 +162,15 @@ def run(settings: Settings, only: set[str] | None = None, use_ai: bool = True) -
         if not e.in_main and not e.tickets:
             e.tickets = free_ticket(e)
     apply_tickets_fallback(merged, configs)
-    # Events several sources report: one description written from all their texts (Gemini, cached).
+    # "Czytaj dalej" to the main source: decided on the texts as fetched, before the AI rewrites any.
+    always_more = {c.id for c in configs if c.options.get("read_more") == "always"}
+    for e in merged:
+        e.desc_more = desc_cut(e.description) or e.all_sources()[0].source_id in always_more
+    # Events several sources report, and texts too long for the page: one description by Gemini (cached).
     ai = gemini(settings)
-    desc_stats = improve_descriptions(merged, ai, now)
+    no_ai = {c.id for c in configs if c.options.get("ai_description") is False}
+    new = {e.uid for e in merged if e.uid not in published_before} if published_before else set()
+    desc_stats = improve_descriptions(merged, ai, now, no_ai, new)
 
     write_outputs(settings, merged, configs, stats)
     summary = {
@@ -199,6 +210,26 @@ def desc_cut(text: str | None) -> bool:
     "Czytaj dalej". Short texts ending in "..." are taken as style, not a cut."""
     text = (text or "").strip()
     return len(text) > DESC_CHARS or (len(text) >= 100 and bool(_SOURCE_CUT.search(text)))
+
+
+_SENTENCE_END = re.compile(r"[.!?…\"”»)]\s*$")
+
+
+def mark_excerpt(text: str | None) -> str | None:
+    """Text from a source that sends only the start of its page (sources.yaml: excerpt: true; allevents.in and
+    Bilety24 stop at ~300 characters, often mid-word, without saying so). When it stops mid-sentence it ends at
+    the last whole word with "…": readers see the cut and desc_cut() offers "Czytaj dalej"."""
+    t = (text or "").rstrip()
+    if not t or _SENTENCE_END.search(t):
+        return text
+    m = re.match(r"(?s)(.*\S)\s+\S{1,40}$", t)  # drop the last word: it may be cut ("Ra", "powr", "http")
+    return (m.group(1) if m else t).rstrip(" ,;:–-.\n") + "…"
+
+
+def read_more(e: Event) -> bool:
+    """Link "Czytaj dalej" to the main source: the text was cut or shortened (desc_more, set before the AI
+    rewrote it), the main source always wants it, or it is cut now (archived events, local previews)."""
+    return bool(e.description) and (e.desc_more or desc_cut(e.description))
 
 
 def short_desc(text: str | None) -> str | None:
@@ -365,7 +396,7 @@ def calendar_json(events: list[Event], feeds: list[dict], pages: dict[str, str] 
             "geo": [round(e.lat, 5), round(e.lon, 5)] if e.lat is not None else None,
             "c": e.categories,
             "d": short_desc(e.description),
-            "dm": desc_cut(e.description),  # cut: the page offers "Czytaj dalej" to the main source
+            "dm": read_more(e),  # the page offers "Czytaj dalej" to the main source
             "p": e.price,
             "img": e.image,
             "tk": e.tickets,

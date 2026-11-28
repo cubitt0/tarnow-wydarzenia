@@ -170,11 +170,24 @@ i stronę z kalendarzem.
 - RSS: do AI trafiają tylko nowe artykuły, które zawierają datę lub godzinę i nie są „śmieciami”
   (wypadki, promocje, sesje rad). Do 40 tys. znaków w jednym zapytaniu.
 - Roczne kalendarze PDF: jedno zapytanie na nowy plik.
-- Opisy wydarzeń z kilku źródeł: gdy dwa lub więcej źródeł podaje różne teksty o tym samym wydarzeniu, Gemini
-  pisze z nich jeden opis (bez emoji i myślników, tylko fakty z tekstów). Osobny limit **15 zapytań dziennie**
-  (`TE_AI_DESC_DAILY_LIMIT`), ok. 10 wydarzeń w jednym zapytaniu, najbliższe najpierw. Odpowiedź jest zapisywana
-  w cache (`cache/ai/descriptions.json`), więc nowe zapytanie idzie dopiero, gdy któreś źródło zmieni tekst.
-  Bez odpowiedzi (brak klucza, limit, błąd) zostaje opis z głównego źródła.
+- Zmiana promptu nie kasuje zapisanych odpowiedzi: stara wersja trafia do `LEGACY_PROMPT_VERSIONS` (`ai.py`)
+  i jej odpowiedzi działają dalej, aż strona, artykuł albo PDF się zmieni. Inaczej ~90 źródeł z AI czekałoby
+  na ponowne odczytanie przy limicie 60 dziennie, a ich wydarzenia znikałyby z kalendarza.
+- Strona z listą aktualności bez kanału RSS: `type: rss` + `format: html_links` + `follow` (wzorzec linków do
+  artykułów) i `article_selector`. AI czyta całe nowe artykuły, nie tylko zajawki z listy (np. UM Tarnów).
+- Opisy przez AI (`describe.py`), w dwóch przypadkach: gdy dwa lub więcej źródeł podaje różne teksty o tym samym
+  wydarzeniu (jeden opis ze wszystkich), i gdy tekst jest dłuższy, niż pokazuje strona (1200 znaków): AI skraca go
+  do najważniejszego zamiast ucinać w pół zdania. Skracane są tylko nowe wydarzenia (UID nie było w `state.json`
+  z poprzedniego budowania); wcześniejsze zostają ucięte jak dotąd. Nowe, którego nie udało się skrócić od razu
+  (limit), czeka w `cache/ai/shorten_pending.json`. Bez `state.json` nic nie liczy się jako nowe. Tylko fakty z tekstów, bez emoji i myślników. Osobny limit
+  **15 zapytań dziennie** (`TE_AI_DESC_DAILY_LIMIT`), ok. 10 wydarzeń w jednym zapytaniu, najbliższe najpierw.
+  Odpowiedź jest zapisywana w cache (`cache/ai/descriptions.json`), więc nowe zapytanie idzie dopiero, gdy któreś
+  źródło zmieni tekst. Bez odpowiedzi (brak klucza, limit, błąd) zostaje opis z głównego źródła, ucięty jak dotąd.
+- „Czytaj dalej” (link do głównego źródła) jest przy opisie, gdy tekst został ucięty (przez nas albo przez
+  źródło: „...”, „…”, „[…]”) lub skrócony przez AI. Opcje źródła w `sources.yaml`: `excerpt: true` (źródło
+  podaje tylko początek tekstu, ucięty bez znaku: allevents.in, Bilety24), `read_more: always` (link zawsze)
+  i `ai_description: false` (teksty źródła nigdy nie trafiają do AI). Informacja turystyczna (it.tarnow.pl)
+  ma obie ostatnie.
 
 ## Uruchomienie lokalne (Docker)
 

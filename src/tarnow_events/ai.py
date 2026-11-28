@@ -69,18 +69,30 @@ Zasady:
 - Data wydarzenia musi wynikać z treści. Data publikacji artykułu NIE jest datą wydarzenia.
 - Jeśli rok nie jest podany, przyjmij najbliższą przyszłą datę.
 - Wydarzenie wielodniowe: start = pierwszy dzień, end = ostatni dzień.
+- Jeden tekst może zapowiadać kilka wydarzeń (np. kilka meczów, koncertów albo spotkań w różnych dniach lub
+  miejscach): wypisz każde osobno, z jego własną datą, godziną i miejscem. Nie łącz ich w jedno wydarzenie
+  na cały weekend albo tydzień.
+- Pomiń krótką zapowiedź, z której nie wynika dzień ani miejsce poszczególnych wydarzeń (np. sam wstęp
+  "w weekend zagrają trzy nasze drużyny").
 - Godziny w czasie lokalnym (Polska), bez strefy. Brak godziny = sama data YYYY-MM-DD.
 - url: link do strony tego wydarzenia, jeśli występuje w tekście (linki są w formacie [tekst](adres)).
-- description: 1-2 zdania po polsku, tylko fakty z tekstu.
-- town: miejscowość, w której wydarzenie się odbywa. Domyślne miejsce, jeśli tekst nie podaje innego: {default_location}.
+- description: po polsku, tylko fakty z tekstu o tym jednym wydarzeniu: co to jest, kto występuje, program,
+  dla kogo, zapisy. Od 1 do 4 zdań, najwyżej 500 znaków.
+- town: miejscowość, w której wydarzenie się odbywa. Mecz wyjazdowy albo wydarzenie w innym mieście: podaj
+  tamtą miejscowość (np. "zagra w Kobierzycach" to Kobierzyce), nie miasto drużyny ani organizatora.
+  Domyślne miejsce, jeśli tekst nie podaje innego: {default_location}.
 Tekst:
 ---
 {text}
 ---"""
 
 
-# Changes whenever the prompt or schema changes, so cached answers made under old rules are not reused.
+# Changes whenever the prompt or schema changes: new questions are asked under the new rules.
 PROMPT_VERSION = hashlib.sha256((PROMPT + json.dumps(EVENT_SCHEMA, sort_keys=True)).encode()).hexdigest()[:10]
+# Earlier versions whose saved answers stay in use until their page, feed item or PDF changes. Without this a
+# prompt edit would drop every saved answer at once, and the daily budget (60) cannot re-read ~90 AI sources
+# in a day: their events would vanish until it did. Add the old PROMPT_VERSION here when editing the prompt.
+LEGACY_PROMPT_VERSIONS = ("acb3ad8823",)
 
 # One description written from what several sources say about the same event (describe.py).
 DESC_SCHEMA = {
@@ -99,13 +111,16 @@ DESC_SCHEMA = {
 }
 
 DESC_PROMPT = """Piszesz opisy wydarzeń do publicznego kalendarza "Wydarzenia Tarnów".
-Każde wydarzenie poniżej opisuje kilka stron. Dla każdego napisz JEDEN opis po polsku na podstawie ich tekstów.
+Każde wydarzenie poniżej opisuje jedna albo kilka stron. Dla każdego napisz JEDEN opis po polsku na podstawie
+ich tekstów.
 
 Zasady:
 - Tylko fakty z podanych tekstów. Niczego nie dopisuj, nie zgaduj i nie oceniaj. Nie uzupełniaj imion, nazw
   ani faktów z własnej wiedzy (jeśli tekst podaje samo nazwisko, zostaw samo nazwisko).
-- Połącz to, co najciekawsze ze wszystkich źródeł: o czym jest wydarzenie, kto występuje, program, dla kogo,
-  zapisy, co zabrać. Bez powtórzeń.
+- Kilka źródeł: połącz to, co najciekawsze ze wszystkich: o czym jest wydarzenie, kto występuje, program,
+  dla kogo, zapisy, co zabrać. Bez powtórzeń.
+- Jedno długie źródło: skróć je do tego, co najważniejsze, z zachowaniem sensu i faktów. Czytelnik może
+  przeczytać całość na stronie źródła, więc nie trzeba streszczać wszystkiego.
 - Pomiń datę, godzinę, adres i cenę, chyba że teksty podają coś więcej (kilka terminów, harmonogram, ulgi).
 - Jeśli źródła sobie przeczą, pomiń tę informację.
 - Długość zależna od tego, ile mówią źródła: od 2 zdań do 2 lub 3 akapitów, najwyżej 1200 znaków.
@@ -218,8 +233,11 @@ class Gemini:
 
     def extract_events_pdf(self, *, pdf: bytes, source: str, url: str, default_location: str) -> list[dict]:
         """Annual event calendars published as PDF: Gemini reads the PDF directly. Cached by file hash."""
-        key = "pdf-" + PROMPT_VERSION + "-" + hashlib.sha256(pdf).hexdigest()
+        digest = hashlib.sha256(pdf).hexdigest()
+        key = "pdf-" + PROMPT_VERSION + "-" + digest
         cached = self.load(key)
+        for old in LEGACY_PROMPT_VERSIONS:  # the same file read under an earlier prompt: no new call
+            cached = cached if cached is not None else self.load("pdf-" + old + "-" + digest)
         if cached is not None:
             self.cache_hits += 1
             return cached

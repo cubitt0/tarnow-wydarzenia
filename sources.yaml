@@ -12,6 +12,9 @@ sources:
     group: miasto
     town: Tarnów
     priority: 60
+    # Its texts stay as written (never sent to the AI, describe.py) and always link "Czytaj dalej" to the page.
+    ai_description: false
+    read_more: always
   - id: kultura-tarnow
     name: Kultura Tarnów (kultura.tarnow.pl)
     type: tribe
@@ -29,8 +32,13 @@ sources:
     priority: 60
   - id: tarnow-pl-aktualnosci
     name: UM Tarnów – Aktualności
-    type: html_ai
+    # No feed, and the list shows only each article's first lines (a "three matches this weekend" teaser
+    # has no days or places): the AI reads the articles themselves, new ones only, ~15 per request.
+    type: rss
+    format: html_links
     url: https://www.tarnow.pl/Dla-mieszkancow/Aktualnosci
+    follow: 'tarnow\.pl/Dla-mieszkancow/Aktualnosci/[^/?#]+/[^/?#]+/?$'
+    article_selector: article.content-view
     group: miasto
     town: Tarnów
     priority: 50
@@ -246,6 +254,8 @@ sources:
     # The listing has dates only; event pages carry the start time.
     follow: 'allevents\.in/tarnow/[^/?#]+/\d{6,}$'
     max_follow: 60
+    # Descriptions are the page's first ~300 characters, cut mid-word: mark the cut ("…", "Czytaj dalej").
+    excerpt: true
 
   - id: ebilet
     name: eBilet – Tarnów i okolice
@@ -258,6 +268,7 @@ sources:
     name: Bilety24 – Tarnów + 50 km
     type: bilety24
     url: https://www.bilety24.pl/szukaj?location=Tarn%C3%B3w&distance=50
+    excerpt: true  # descriptions stop at ~300 characters, mid-word: mark the cut ("…", "Czytaj dalej")
     group: bilety
     priority: 40
     search_location: Tarnów

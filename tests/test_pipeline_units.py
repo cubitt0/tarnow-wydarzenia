@@ -774,8 +774,8 @@ def test_merge_keeps_every_sources_text():
     a.description, b.description = "Koncert zespołu Kult. Bilety w sprzedaży.", "Kult zagra największe przeboje."
     merged = deduplicate([a, b], {})
     assert len(merged) == 1
-    assert merged[0].source_texts == [("VENUE", "Kult zagra największe przeboje."),
-                                      ("EBILET", "Koncert zespołu Kult. Bilety w sprzedaży.")]
+    assert merged[0].source_texts == [("venue", "VENUE", "Kult zagra największe przeboje."),
+                                      ("ebilet", "EBILET", "Koncert zespołu Kult. Bilety w sprzedaży.")]
     assert merged[0].description == "Kult zagra największe przeboje."  # the main source's, until AI rewrites it
 
 
@@ -783,9 +783,9 @@ def test_description_texts_and_cleanup():
     from tarnow_events.describe import clean, distinct_texts
 
     e = ev("Mamoteka", T)
-    e.source_texts = [("Portal", "Dziś spotkanie Mamoteki…"),
-                      ("Biblioteka", "Dziś spotkanie Mamoteki w bibliotece. Zabawy dla dzieci do 3 lat."),
-                      ("Miasto", "Zapisy pod numerem telefonu biblioteki.")]
+    e.source_texts = [("p", "Portal", "Dziś spotkanie Mamoteki…"),
+                      ("b", "Biblioteka", "Dziś spotkanie Mamoteki w bibliotece. Zabawy dla dzieci do 3 lat."),
+                      ("m", "Miasto", "Zapisy pod numerem telefonu biblioteki.")]
     assert [n for n, _ in distinct_texts(e)] == ["Biblioteka", "Miasto"]  # the lead repeats the article
     out = clean("🎉 **Koncert** zespołu — wielkie przeboje – i nowe utwory 🎸. Więcej: https://x.pl/a\n\nGodziny 18:00–20:00.")
     assert out == "Koncert zespołu, wielkie przeboje, i nowe utwory. Więcej:\n\nGodziny 18:00–20:00."
@@ -808,12 +808,12 @@ def test_ai_descriptions_cached_and_fallback(tmp_path):
     def event():
         e = ev("Kult", T)
         e.description = "Koncert zespołu Kult."
-        e.source_texts = [("A", "Koncert zespołu Kult."), ("B", "Kult zagra w Tarnowie przeboje z płyty Ostateczny krach.")]
+        e.source_texts = [("a", "A", "Koncert zespołu Kult."), ("b", "B", "Kult zagra w Tarnowie przeboje z płyty Ostateczny krach.")]
         return e
 
     now = T - timedelta(days=1)
     single = ev("Solo", T)
-    single.description, single.source_texts = "Tylko jedno źródło.", [("A", "Tylko jedno źródło.")]
+    single.description, single.source_texts = "Tylko jedno źródło.", [("a", "A", "Tylko jedno źródło.")]
     e = event()
     stats = improve_descriptions([e, single], FakeAI("Zespół Kult zagra w Tarnowie przeboje — także z płyty Ostateczny krach 🎸."), now)
     assert e.description == "Zespół Kult zagra w Tarnowie przeboje, także z płyty Ostateczny krach."
@@ -825,7 +825,7 @@ def test_ai_descriptions_cached_and_fallback(tmp_path):
     assert again.description == e.description and not blocked.calls
     # A source changed its text and the AI is blocked: the main source's description stays.
     changed = event()
-    changed.source_texts[1] = ("B", "Nowy tekst o koncercie zespołu Kult w Tarnowie.")
+    changed.source_texts[1] = ("b", "B", "Nowy tekst o koncercie zespołu Kult w Tarnowie.")
     stats = improve_descriptions([changed], blocked, now)
     assert changed.description == "Koncert zespołu Kult." and stats["descriptions_waiting"] == 1
 
@@ -837,3 +837,113 @@ def test_desc_cut_by_us_or_by_source():
     assert desc_cut(lead) and desc_cut(lead[:-3] + "…") and desc_cut(lead[:-3] + " […]")
     assert desc_cut("Słowo " * (DESC_CHARS // 5))  # too long: we cut it
     assert not desc_cut("Zapraszamy...") and not desc_cut(lead[:-3] + ".") and not desc_cut(None)
+
+
+def test_excerpt_sources_mark_their_cut():
+    from tarnow_events.pipeline import desc_cut, mark_excerpt
+
+    body = "Bas może być nie tylko fundamentem sekcji rytmicznej. " * 4
+    cut = mark_excerpt(body + "Bas może być pełnoprawnym")  # allevents.in: stops mid-sentence
+    assert cut.endswith("Bas może być…") and desc_cut(cut)
+    assert mark_excerpt(body + "Szczególnie, jeśli jego partnerkami są stewardessy. P").endswith("są stewardessy…")
+    assert mark_excerpt(body.rstrip()) == body.rstrip()  # ends a sentence: left as it is
+    assert mark_excerpt("Wejście z biletem...") == "Wejście z biletem..." and mark_excerpt(None) is None
+
+
+def test_long_text_shortened_by_ai_and_no_ai_sources(tmp_path):
+    from tarnow_events.describe import improve_descriptions
+    from tarnow_events.pipeline import DESC_CHARS, desc_cut, read_more
+
+    class FakeAI:
+        enabled, cache_dir = True, tmp_path
+
+        def __init__(self):
+            self.sent = []
+
+        def describe(self, items):
+            self.sent += items
+            return {it["id"]: "Krótszy opis wydarzenia napisany z długiego tekstu organizatora." for it in items}
+
+    long = "Długi opis wydarzenia z programem. " * (DESC_CHARS // 30)
+    venue = ev("Spektakl", T, src="venue")
+    venue.description, venue.source_texts = long, [("venue", "VENUE", long)]
+    info = ev("Wystawa", T, src="it-tarnow")
+    info.description, info.source_texts = long, [("it-tarnow", "IT", long)]
+    both = ev("Koncert", T, src="org")  # the tourist office is only a second source here
+    both.description = "Koncert w sali kameralnej."
+    both.source_texts = [("org", "ORG", "Koncert w sali kameralnej."), ("it-tarnow", "IT", "Inny tekst informacji turystycznej.")]
+    for e in (venue, info, both):
+        e.desc_more = desc_cut(e.description)  # as the pipeline does before the AI
+    ai = FakeAI()
+    stats = improve_descriptions([venue, info, both], ai, T - timedelta(days=1), no_ai={"it-tarnow"})
+    assert venue.description.startswith("Krótszy opis") and read_more(venue)  # shortened, still links to the source
+    assert info.description == long and read_more(info)  # never sent: cut on the page as before
+    assert both.description == "Koncert w sali kameralnej."  # one text left without the office's: nothing to merge
+    assert [it["title"] for it in ai.sent] == ["Spektakl"] and stats["descriptions_new"] == 1
+
+
+def test_only_new_events_get_long_text_shortened(tmp_path):
+    from tarnow_events.describe import improve_descriptions
+    from tarnow_events.pipeline import DESC_CHARS
+
+    class FakeAI:
+        enabled, cache_dir = True, tmp_path
+
+        def __init__(self, ok=True):
+            self.ok, self.sent = ok, []
+
+        def describe(self, items):
+            self.sent += [it["title"] for it in items]
+            return {it["id"]: f"Skrócony opis wydarzenia {it['title']} z długiego tekstu." for it in items} if self.ok else None
+
+    long = "Długi opis wydarzenia z programem. " * (DESC_CHARS // 30)
+
+    def event(title, uid):
+        e = ev(title, T, src=title.lower())
+        e.uid, e.description, e.source_texts = uid, long, [(title.lower(), title, long)]
+        return e
+
+    now = T - timedelta(days=1)
+    old, fresh = event("Stary", "old@x"), event("Nowy", "new@x")
+    ai = FakeAI()
+    stats = improve_descriptions([old, fresh], ai, now, new={"new@x"})
+    assert ai.sent == ["Nowy"] and old.description == long and fresh.description.startswith("Skrócony")
+    assert stats["descriptions_long_kept"] == 1
+    # New, but the allowance is used up today: it waits, and is shortened in a later build (no longer "new").
+    late = event("Późny", "late@x")
+    improve_descriptions([late], FakeAI(ok=False), now, new={"late@x"})
+    assert late.description == long
+    later = event("Późny", "late@x")
+    ai = FakeAI()
+    improve_descriptions([later], ai, now, new=set())
+    assert ai.sent == ["Późny"] and later.description.startswith("Skrócony")
+
+
+def test_html_links_feed_takes_article_links():
+    from tarnow_events.sources.rss import _html_links_feed
+
+    page = """<a href="/Dla-mieszkancow/Aktualnosci/Sport">Sport</a>
+      <a href="/Dla-mieszkancow/Aktualnosci/Sport/Trzy-mecze"><img src="x.jpg"></a>
+      <a href="/Dla-mieszkancow/Aktualnosci/Sport/Trzy-mecze">Trzy mecze tarnowskich futsalistów</a>
+      <a href="/Dla-mieszkancow/Aktualnosci/Kultura/Recital">Recital organowy</a>
+      <a href="/Dla-mieszkancow/Aktualnosci?page=2">2</a>"""
+    feed = _html_links_feed(page, "https://www.tarnow.pl/Dla-mieszkancow/Aktualnosci",
+                            r"tarnow\.pl/Dla-mieszkancow/Aktualnosci/[^/?#]+/[^/?#]+/?$")
+    assert [(e["title"], e["link"]) for e in feed.entries] == [
+        ("Trzy mecze tarnowskich futsalistów", "https://www.tarnow.pl/Dla-mieszkancow/Aktualnosci/Sport/Trzy-mecze"),
+        ("Recital organowy", "https://www.tarnow.pl/Dla-mieszkancow/Aktualnosci/Kultura/Recital")]
+
+
+def test_page_image_passes_over_logo_for_the_posts_picture():
+    from tarnow_events.images import page_image
+
+    base = "https://tarnow.geminipark.pl/aktualnosci/krawczyk/"
+    logo = '<meta property="og:image" content="https://tarnow.geminipark.pl/wp-content/uploads/2022/06/Logo-GEMINI-PARK.svg">'
+    ld = ('<script type="application/ld+json">{"@graph":[{"@type":"BlogPosting","image":{"@type":"ImageObject",'
+          '"url":"https://tarnow.geminipark.pl/wp-content/uploads/2026/11/krawczyk.jpg"}}]}</script>')
+    body = '<article><img src="/ikona.png" width="24"><img src="/wp-content/uploads/plakat.jpg"></article>'
+    assert page_image(logo + ld + body, base).endswith("/2026/11/krawczyk.jpg")  # the post's picture, not the logo
+    assert page_image(logo + body, base) == "https://tarnow.geminipark.pl/wp-content/uploads/plakat.jpg"  # first real <img>
+    assert page_image(logo, base) is None
+    photo = '<meta property="og:image" content="https://teatr.pl/plakat.jpg">'
+    assert page_image(photo + ld, base) == "https://teatr.pl/plakat.jpg"  # a real og:image still comes first

@@ -525,7 +525,7 @@ def _card(o: Event, p: str, dated: bool) -> str:
 def event_page(base: str, e: Event, path: str, siblings: list[tuple[Event, str]], *, screening: bool = False,
                status: str | None = None) -> str:
     """status PAST or GONE: an archived page; siblings are then upcoming events to go to instead."""
-    from .pipeline import desc_cut, short_desc  # one cut-off rule for the calendar and these pages
+    from .pipeline import read_more, short_desc  # one cut-off rule for the calendar and these pages
 
     s = e.start.astimezone(TZ)
     place = e.location_line()
@@ -588,7 +588,7 @@ def event_page(base: str, e: Event, path: str, siblings: list[tuple[Event, str]]
     desc_html = ""
     if e.description:
         more = (f'<a class="more" href="{escape(src[0].url)}" target="_blank" rel="noopener nofollow">Czytaj dalej'
-                f'<span class="ms">open_in_new</span></a>') if desc_cut(e.description) else ""
+                f'<span class="ms">open_in_new</span></a>') if read_more(e) else ""
         desc_html = f'<p class="desc">{_linkify(short_desc(e.description))}{more}</p>'
 
     # One main action, full width: buying a ticket (an archived page: the calendar's upcoming events).
