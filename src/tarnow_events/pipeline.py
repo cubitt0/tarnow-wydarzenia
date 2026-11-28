@@ -17,7 +17,7 @@ from .categorize import categorize, is_junk
 from .config import Settings, SourceConfig, load_sources
 from .dedup import deduplicate
 from .howto import APPS, app_icon, howto_html
-from .images import enrich_images
+from .images import enrich_images, tidy_gallery
 from .geo import Geocoder, canonical_town, correct_tarnow, distance_from_tarnow, nearest_town, norm_town
 from .ical_out import build_calendar
 from .models import CATEGORIES, TZ, Event
@@ -157,6 +157,8 @@ def run(settings: Settings, only: set[str] | None = None, use_ai: bool = True) -
     # Pictures and ticket links from the events' own pages (cinema has posters already; skip it).
     img_stats = enrich_images([e for e in merged if e.in_main], settings.cache_dir,
                               listing_urls={c.url for c in configs})
+    for e in merged:
+        tidy_gallery(e)
     # Cinema: no page reading, but a screening listed by a ticket shop (Bilety24) is its own ticket link.
     for e in merged:
         if not e.in_main and not e.tickets:
@@ -399,6 +401,7 @@ def calendar_json(events: list[Event], feeds: list[dict], pages: dict[str, str] 
             "dm": read_more(e),  # the page offers "Czytaj dalej" to the main source
             "p": e.price,
             "img": e.image,
+            "im": e.images or None,
             "tk": e.tickets,
             "u": pages.get(e.uid),
             "src": [[r.source_name, r.url] for r in e.all_sources()],

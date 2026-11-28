@@ -48,6 +48,8 @@ class Event:
     lat: float | None = None
     lon: float | None = None
     image: str | None = None
+    # More pictures from the description (a festival's programme, a price list): shown under it, the poster excluded.
+    images: list[str] = field(default_factory=list)
     price: str | None = None
     tickets: str | None = None  # where to buy tickets (a ticket shop's page for this event)
     categories: list[str] = field(default_factory=list)

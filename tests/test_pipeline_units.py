@@ -947,3 +947,75 @@ def test_page_image_passes_over_logo_for_the_posts_picture():
     assert page_image(logo, base) is None
     photo = '<meta property="og:image" content="https://teatr.pl/plakat.jpg">'
     assert page_image(photo + ld, base) == "https://teatr.pl/plakat.jpg"  # a real og:image still comes first
+
+
+def test_description_pictures_become_the_gallery():
+    from tarnow_events.pictures import content_images, same_picture
+    up = "https://kultura.tarnow.pl/wp-content/uploads/"
+    desc = (f'<p><img class="alignnone size-full" src="{up}harmonogram-scaled-e1792482722451.jpg" width="1681" height="2380" '
+            f'srcset="{up}harmonogram-212x300.jpg 212w, {up}harmonogram-scaled-e1792482722451.jpg 1681w, {up}harmonogram-723x1024.jpg 723w"></p>'
+            f'<img src="{up}harmonogram-768x1087.jpg">'  # the same picture again, smaller
+            '<img class="emoji" src="https://s.w.org/images/core/emoji/16/72x72/1f389.png">'
+            '<img src="/px.gif" width="1" height="1"><img src="/wp-content/uploads/logo-tck.png">'
+            "<img data-src='/wp-content/uploads/cennik.jpg' src='data:image/gif;base64,R0l'>")
+    assert content_images(desc, "https://kultura.tarnow.pl") == [f"{up}harmonogram-scaled-e1792482722451.jpg", f"{up}cennik.jpg"]
+    assert content_images("Zwykły opis bez obrazków", "https://x.pl") == []
+    assert same_picture(f"{up}plakat_a4_druk.jpg", f"{up}plakat_a4_druk-743x1024.jpg")
+    assert not same_picture(f"{up}plakat_a4_druk.jpg", f"{up}harmonogram.jpg")
+    # The organiser's original of the poster the calendar keeps a copy of.
+    assert same_picture(f"{up}VOX-promo.jpg", "https://csm.tarnow.pl/uploads/site/event/VOX-promo.jpg")
+    assert not same_picture("https://x.pl/foto-1.jpg", "https://x.pl/foto-2.jpg")
+    assert same_picture(f"{up}ZDAZYC-www-1.jpg", f"{up}ZDAZYC-www.jpg", loose=True)
+    assert not same_picture("https://x.pl/img.php?id=1", "https://x.pl/img.php?id=2")
+
+
+def test_tribe_programme_picture_kept_beside_the_poster(monkeypatch):
+    from tarnow_events.config import SourceConfig, Settings
+    from tarnow_events.sources import tribe
+    up = "https://kultura.tarnow.pl/wp-content/uploads/"
+    item = {"title": "Fantastyczny Tarnów", "start_date": "2026-11-27 00:00:00", "end_date": "2026-11-29 23:59:59",
+            "all_day": True, "url": "https://kultura.tarnow.pl/wydarzenie/84843/2026-11-27/", "excerpt": "Festiwal.",
+            "description": f'<p><img src="{up}harmonogram.jpg" width="1681" height="2380"></p>',
+            "image": {"url": f"{up}plakat_a4_druk.jpg"}}
+
+    class Resp:
+        def json(self):
+            return {"events": [item]}
+    monkeypatch.setattr(tribe.http, "get", lambda *a, **k: Resp())
+    src = tribe.TribeSource(SourceConfig(id="kultura-tarnow", name="K", type="tribe", url="https://kultura.tarnow.pl"),
+                            Settings.from_env())
+    [e] = list(src.fetch())
+    assert e.image == f"{up}plakat_a4_druk.jpg" and e.images == [f"{up}harmonogram.jpg"] and e.description == "Festiwal."
+
+
+def test_gallery_merges_and_never_repeats_the_poster():
+    from tarnow_events.images import tidy_gallery
+    a = ev("Festiwal", T, src="a", prio=70)
+    a.image, a.images = "https://a.pl/plakat.jpg", ["https://a.pl/program.jpg", "https://a.pl/plakat-743x1024.jpg"]
+    b = ev("Festiwal", T, src="b", prio=40)
+    b.images = ["https://a.pl/program-300x400.jpg", "https://b.pl/mapa.jpg"]
+    [m] = deduplicate([a, b], {})
+    tidy_gallery(m)
+    assert m.image == "https://a.pl/plakat.jpg" and m.images == ["https://a.pl/program.jpg", "https://b.pl/mapa.jpg"]
+    again = ev("Wystawa", T, src="d")
+    again.image, again.images = "https://d.pl/up/wystawa-1.jpg", ["https://d.pl/up/wystawa.jpg", "https://d.pl/up/sala-1.jpg"]
+    tidy_gallery(again)  # the poster uploaded once more under its old name is not a second picture
+    assert again.images == ["https://d.pl/up/sala-1.jpg"]
+    bare = ev("Warsztaty", T, src="c")
+    bare.images = ["https://c.pl/1.jpg", "https://c.pl/2.jpg"]
+    tidy_gallery(bare)  # no poster of its own: the first picture becomes it
+    assert bare.image == "https://c.pl/1.jpg" and bare.images == ["https://c.pl/2.jpg"]
+
+
+def test_event_page_poster_switches_between_pictures():
+    from tarnow_events.seo import event_page
+    e = ev("Festiwal fantastyki", T, src="a")
+    e.uid, e.image, e.images = "u", "https://a.pl/plakat.jpg", ["https://a.pl/program.jpg"]
+    html = event_page("https://tarnow-wydarzenia.pl", e, "wydarzenie/x/", [])
+    assert 'data-pics="[&quot;https://a.pl/plakat.jpg&quot;, &quot;https://a.pl/program.jpg&quot;]"' in html
+    assert '<span class="pv-dots" aria-hidden="true"><i class="on"></i><i></i></span>' in html  # two pictures, the first shown
+    assert 'data-zoom="https://a.pl/plakat.jpg"' in html
+    assert "const PICS" in html and "chevron_left" in html  # the switching script and its icon came along
+    assert '"image":["https://a.pl/plakat.jpg","https://a.pl/program.jpg"]' in html
+    e.images = []
+    assert 'data-pics="' not in event_page("https://tarnow-wydarzenia.pl", e, "wydarzenie/x/", [])

@@ -566,6 +566,7 @@ dialog:focus,dialog:focus-visible,.sheet:focus{outline:none}
    Picture viewer: full screen, the picture fitted; zoomed in it scrolls (drag or swipe). Selectors beat
    the generic dialog rules above (bottom sheet on phones) by specificity. */
 [data-zoom]:not(.noimg){cursor:zoom-in}
+[data-pics]{touch-action:pan-y pinch-zoom}  /* a sideways swipe switches the pictures; the page still scrolls */
 html:has(dialog.lb[open]){overflow:hidden}
 dialog.lb[open]{position:fixed;inset:0;margin:0;width:100vw;height:100vh;height:100dvh;max-width:none;max-height:none;padding:0;border:0;
   background:transparent;overflow:hidden}
@@ -577,15 +578,31 @@ dialog.lb::backdrop{background:rgb(12 11 10 / .9);animation:lbFade .25s}
 dialog.lb.max .lb-view img{cursor:grab}
 dialog.lb.out .lb-view img{cursor:zoom-out}
 dialog.lb.panning .lb-view img{cursor:grabbing}
-.lb-x,.lb-zoom{position:fixed;z-index:2;background:rgb(0 0 0 / .55);color:#fff;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.lb-x,.lb-zoom,.lb-arrow{position:fixed;z-index:2;background:rgb(0 0 0 / .55);color:#fff;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
 .lb-x{top:max(12px,env(safe-area-inset-top,0px));right:12px;width:44px;height:44px;border-radius:22px;border:0;display:grid;place-items:center;cursor:pointer}
 .lb-zoom{left:50%;bottom:max(16px,env(safe-area-inset-bottom,0px));transform:translateX(-50%);display:flex;gap:2px;padding:4px;border-radius:26px}
 .lb-zoom button{width:44px;height:44px;border-radius:22px;border:0;background:transparent;color:inherit;display:grid;place-items:center;cursor:pointer}
-.lb-x:hover,.lb-zoom button:hover{background:rgb(255 255 255 / .16)}
+.lb-arrow{top:50%;width:52px;height:52px;margin-top:-26px;border-radius:26px;border:0;display:none;place-items:center;cursor:pointer}
+.lb-arrow.l{left:max(12px,env(safe-area-inset-left,0px))}.lb-arrow.r{right:max(12px,env(safe-area-inset-right,0px))}
+dialog.lb.multi .lb-arrow{display:grid}
+.lb-arrow .ms{font-size:30px}
+.lb-n{align-self:center;padding:0 6px;font:600 14px/1 var(--font, system-ui);font-variant-numeric:tabular-nums;white-space:nowrap}
+.lb-n:empty{display:none}
+.lb-x:hover,.lb-zoom button:hover,.lb-arrow:hover{background:rgb(255 255 255 / .16)}
 .lb-zoom button:disabled{opacity:.35;cursor:default;background:transparent}
 .lb-x .ms,.lb-zoom .ms{font-size:24px}
 @keyframes lbFade{from{opacity:0}}
 @keyframes lbIn{from{transform:scale(.96);opacity:0}}
+/* Several pictures on one poster (the poster, then the description's): arrows and dots switch them. */
+.pv-btn{position:absolute;top:50%;z-index:2;width:40px;height:40px;margin-top:-20px;padding:0;border:0;border-radius:20px;display:grid;place-items:center;
+  background:rgb(0 0 0 / .5);color:#fff;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);cursor:pointer;transition:background-color .2s}
+.pv-btn:hover{background:rgb(0 0 0 / .72)}
+.pv-btn.l{left:10px}.pv-btn.r{right:10px}
+.pv-btn .ms{font-size:26px}
+.pv-dots{position:absolute;left:50%;bottom:12px;z-index:2;transform:translateX(-50%);display:flex;gap:6px;padding:6px 8px;border-radius:12px;
+  background:rgb(0 0 0 / .45);pointer-events:none}
+.pv-dots i{width:7px;height:7px;border-radius:50%;background:#fff;opacity:.45;transition:opacity .2s}
+.pv-dots i.on{opacity:1}
 /* LIGHTBOX-CSS-END */
 
 /* ---------- responsive ---------- */
@@ -1425,11 +1442,13 @@ function openEvent(id, fromHash) {
   const map = gq ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(gq)}` : null;
   const osm = e.geo ? `https://www.openstreetmap.org/?mlat=${e.geo[0]}&mlon=${e.geo[1]}#map=17/${e.geo[0]}/${e.geo[1]}`
     : e.loc ? `https://www.openstreetmap.org/search?query=${encodeURIComponent(e.loc)}` : null;
+  const pics = e.img ? [e.img, ...(e.im || [])] : [];  // the poster, then the description's pictures
   const T = todayKey();
   const rel = e.sk === T ? relHTML(e) : e.sk === addDays(T, 1) ? `<span class="rel">jutro</span>` : e.sk > T ? `<span class="rel">za ${diffDays(T, e.sk)} dni</span>` : "";
   sheet.innerHTML = `<div class="handle"></div>
-    <div class="hero${e.img ? "" : " noimg"}" style="${catVars(e.cat)}"${e.img ? ` data-zoom="${esc(e.img)}" data-alt="${esc(e.t)}" role="button" tabindex="0" aria-label="Powiększ zdjęcie"` : ""}>
+    <div class="hero${e.img ? "" : " noimg"}" style="${catVars(e.cat)}"${e.img ? ` data-zoom="${esc(e.img)}" data-alt="${esc(e.t)}" role="button" tabindex="0" aria-label="Powiększ zdjęcie"` : ""}${pics.length > 1 ? ` data-pics="${esc(JSON.stringify(pics))}"` : ""}>
       ${e.img ? `<img class="bg" src="${esc(e.img)}" alt="" referrerpolicy="no-referrer" onerror="imgFail(this)"><img class="fg" src="${esc(e.img)}" alt="" referrerpolicy="no-referrer" onerror="imgFail(this)">` : ""}
+      ${PICS.controls(pics)}
       <span class="ms glyph" aria-hidden="true">${ICONS[e.cat]}</span>
     </div>
     <button class="closex sl" data-act="close" aria-label="Zamknij"><span class="ms">close</span></button>
@@ -1486,9 +1505,15 @@ sheet.addEventListener("click", ev => {
   else if (b.dataset.act === "copy" && e) copyText(eventUrl(e), "Skopiowano link do wydarzenia");
 });
 // swipe down to close the bottom sheet
-let sy = null;
-sheet.addEventListener("touchstart", ev => { sy = sheet.scrollTop <= 0 ? ev.touches[0].clientY : null; }, {passive: true});
-sheet.addEventListener("touchmove", ev => { if (sy === null) return; const dy = ev.touches[0].clientY - sy; if (dy > 0) sheet.style.transform = `translateY(${dy}px)`; }, {passive: true});
+let sy = null, sx = 0;
+sheet.addEventListener("touchstart", ev => { sy = sheet.scrollTop <= 0 ? ev.touches[0].clientY : null; sx = ev.touches[0].clientX; }, {passive: true});
+sheet.addEventListener("touchmove", ev => {
+  if (sy === null) return;
+  const dy = ev.touches[0].clientY - sy, dx = ev.touches[0].clientX - sx;
+  // Sideways is the poster's swipe between pictures (PICS), not pulling the sheet down.
+  if (Math.abs(dx) > 10 && Math.abs(dx) > dy) { sy = null; sheet.style.transform = ""; return; }
+  if (dy > 0) sheet.style.transform = `translateY(${dy}px)`;
+}, {passive: true});
 sheet.addEventListener("touchend", ev => { if (sy === null) return; const dy = ev.changedTouches[0].clientY - sy; sy = null; sheet.style.transform = ""; if (dy > 110) closeDlg(); });
 
 function icsEsc(s) { return String(s).replace(/\\/g, "\\\\").replace(/\n/g, "\\n").replace(/[,;]/g, m => "\\" + m); }
@@ -1520,20 +1545,37 @@ function copyText(text, msg) {
 // Picture viewer. A [data-zoom] element (the poster) opens its picture full screen. Click zooms in where you
 // click, Ctrl+click (⌘+click) zooms out, the mouse drags a zoomed picture, fingers scroll it. Clicking beside
 // the picture, the X or Esc closes; the buttons at the bottom zoom too (touch screens have no Ctrl).
+// Opened from a poster with several pictures ([data-pics], PICS below), arrows, ← → and a swipe switch them
+// here too, and the poster follows.
 const LB = (() => {
   const LEVELS = [1, 2, 4];  // × the fitted size
-  let dlg, view, img, nat = [1, 1], fit = 1, z = 1, drag = null;
+  let dlg, view, img, from = null, nat = [1, 1], fit = 1, z = 1, drag = null, touch = null;
   function build() {
     dlg = document.createElement("dialog");
     dlg.className = "lb";
     dlg.setAttribute("aria-label", "Zdjęcie");
     dlg.innerHTML = `<div class="lb-view"></div>
       <button class="lb-x" type="button" aria-label="Zamknij"><span class="ms">close</span></button>
-      <div class="lb-zoom"><button type="button" data-z="-1" aria-label="Pomniejsz"><span class="ms">zoom_out</span></button><button type="button" data-z="1" aria-label="Powiększ"><span class="ms">zoom_in</span></button></div>`;
+      <button class="lb-arrow l" type="button" data-go="-1" aria-label="Poprzednie zdjęcie"><span class="ms">chevron_left</span></button>
+      <button class="lb-arrow r" type="button" data-go="1" aria-label="Następne zdjęcie"><span class="ms">chevron_right</span></button>
+      <div class="lb-zoom"><button type="button" data-z="-1" aria-label="Pomniejsz"><span class="ms">zoom_out</span></button><span class="lb-n"></span><button type="button" data-z="1" aria-label="Powiększ"><span class="ms">zoom_in</span></button></div>`;
     document.body.append(dlg);
     view = dlg.querySelector(".lb-view");
     dlg.querySelector(".lb-x").onclick = () => dlg.close();
     dlg.querySelectorAll("[data-z]").forEach(b => b.onclick = () => zoom(+b.dataset.z));
+    dlg.querySelectorAll("[data-go]").forEach(b => b.onclick = () => go(+b.dataset.go));
+    dlg.addEventListener("keydown", ev => {
+      if (z === 1 && (ev.key === "ArrowLeft" || ev.key === "ArrowRight")) { ev.preventDefault(); go(ev.key === "ArrowLeft" ? -1 : 1); }
+    });
+    view.addEventListener("touchstart", ev => {
+      touch = z === 1 && ev.touches.length === 1 ? [ev.touches[0].clientX, ev.touches[0].clientY] : null;
+    }, {passive: true});
+    view.addEventListener("touchend", ev => {
+      if (!touch) return;
+      const dx = ev.changedTouches[0].clientX - touch[0], dy = ev.changedTouches[0].clientY - touch[1];
+      touch = null;
+      if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.5) go(dx < 0 ? 1 : -1);
+    }, {passive: true});
     view.addEventListener("click", ev => {
       if (drag?.moved) return;
       if (ev.target !== img) return dlg.close();  // beside the picture
@@ -1556,7 +1598,7 @@ const LB = (() => {
     const mod = ev => dlg.open && dlg.classList.toggle("out", (ev.ctrlKey || ev.metaKey) && z > 1);
     addEventListener("keydown", mod); addEventListener("keyup", mod);
     addEventListener("resize", () => { if (dlg.open) { measure(); apply(); } });
-    dlg.addEventListener("close", () => view.replaceChildren());
+    dlg.addEventListener("close", () => { view.replaceChildren(); from = null; });
   }
   function measure() {
     const pad = innerWidth < 600 ? 12 : 56;
@@ -1583,9 +1625,25 @@ const LB = (() => {
     view.scrollTop = img.offsetTop + py * img.offsetHeight - cy;
     dlg.classList.toggle("out", !!ev && (ev.ctrlKey || ev.metaKey) && z > 1);
   }
-  function open(src, alt) {
+  const count = () => from?.isConnected ? JSON.parse(from.dataset.pics || "[]").length : 0;
+  function go(d) {  // the poster switches (PICS), the viewer shows what it shows now
+    if (count() < 2) return;
+    PICS.step(from, d);
+    show(from.dataset.zoom, img.alt);
+  }
+  function open(src, alt, el) {
     if (!dlg) build();
+    from = el?.dataset.pics ? el : null;
+    show(src, alt);
+    dlg.classList.remove("out", "max", "panning");
+    dlg.showModal();
+  }
+  function show(src, alt) {
     z = 1;
+    const n = count();
+    dlg.classList.toggle("multi", n > 1);
+    dlg.querySelector(".lb-n").textContent = n > 1 ? `${(+from.dataset.i || 0) + 1} / ${n}` : "";
+    view.scrollLeft = view.scrollTop = 0;
     img = new Image();
     img.referrerPolicy = "no-referrer";  // as on the page: some sites refuse hotlinked pictures
     img.alt = alt || "";
@@ -1596,16 +1654,84 @@ const LB = (() => {
     img.src = src;
     view.replaceChildren(img);
     if (img.complete && img.naturalWidth) ready();
-    dlg.classList.remove("out", "max", "panning");
-    dlg.showModal();
   }
   const target = ev => { const t = ev.target.closest?.("[data-zoom]"); return t && !t.classList.contains("noimg") ? t : null; };
-  document.addEventListener("click", ev => { const t = target(ev); if (t) open(t.dataset.zoom, t.dataset.alt); });
+  document.addEventListener("click", ev => { const t = target(ev); if (t) open(t.dataset.zoom, t.dataset.alt, t); });
   document.addEventListener("keydown", ev => {
     const t = (ev.key === "Enter" || ev.key === " ") && target(ev);
-    if (t) { ev.preventDefault(); open(t.dataset.zoom, t.dataset.alt); }
+    if (t) { ev.preventDefault(); open(t.dataset.zoom, t.dataset.alt, t); }
   });
   return {open};
+})();
+// Several pictures on one poster: [data-pics] lists them (the poster first, then the description's), its
+// img.bg / img.fg show one. The arrows, ← → and a swipe switch them; the viewer above opens the one shown.
+// A picture that fails to load leaves the list; with none left the poster is a colour block (.noimg).
+const PICS = (() => {
+  const list = el => { try { return JSON.parse(el.dataset.pics || "[]"); } catch { return []; } };
+  const dots = n => `<span class="pv-dots" aria-hidden="true">${"<i></i>".repeat(n)}</span>`;
+  // The arrows and dots for a poster with these pictures ("" for one): both pages build the poster with it.
+  const controls = pics => pics.length < 2 ? "" :
+    `<button class="pv-btn l" type="button" data-step="-1" aria-label="Poprzednie zdjęcie"><span class="ms">chevron_left</span></button>` +
+    `<button class="pv-btn r" type="button" data-step="1" aria-label="Następne zdjęcie"><span class="ms">chevron_right</span></button>` +
+    dots(pics.length).replace("<i>", '<i class="on">');
+  const load = (src, ok, fail) => { const im = new Image(); im.referrerPolicy = "no-referrer"; im.onload = ok; im.onerror = fail; im.src = src; };
+  function show(el, i) {
+    const pics = list(el);
+    if (!pics.length) return;
+    i = (i + pics.length) % pics.length;
+    el.dataset.i = i;
+    el.dataset.zoom = pics[i];
+    el.querySelectorAll("img.bg, img.fg").forEach(im => { if (im.getAttribute("src") !== pics[i]) im.src = pics[i]; });
+    el.querySelectorAll(".pv-dots i").forEach((d, k) => d.classList.toggle("on", k === i));
+    if (pics.length > 1) load(pics[(i + 1) % pics.length]);  // the next one is ready when asked for
+  }
+  const step = (el, d) => el && show(el, (+el.dataset.i || 0) + d);
+  function drop(el, bad) {
+    const pics = list(el), left = pics.filter(p => p !== bad);
+    if (left.length === pics.length) return;
+    el.dataset.pics = JSON.stringify(left);
+    if (!left.length) {
+      el.classList.add("noimg");
+      el.querySelectorAll("img, .pv-btn, .pv-dots").forEach(n => n.remove());
+      return;
+    }
+    if (left.length < 2) el.querySelectorAll(".pv-btn, .pv-dots").forEach(n => n.remove());
+    else el.querySelector(".pv-dots").outerHTML = dots(left.length);
+    const at = left.indexOf(el.dataset.zoom);
+    show(el, at >= 0 ? at : Math.min(+el.dataset.i || 0, left.length - 1));
+  }
+  // Capture phase, before the viewer's own listeners: an arrow is not a click on the poster.
+  document.addEventListener("click", ev => {
+    const b = ev.target.closest?.("[data-pics] [data-step]");
+    if (b) { ev.stopPropagation(); step(b.closest("[data-pics]"), +b.dataset.step); }
+  }, true);
+  document.addEventListener("keydown", ev => {
+    const el = ev.target.closest?.("[data-pics]");
+    if (!el) return;
+    if (ev.key === "ArrowLeft" || ev.key === "ArrowRight") { ev.preventDefault(); step(el, ev.key === "ArrowLeft" ? -1 : 1); }
+    else if ((ev.key === "Enter" || ev.key === " ") && ev.target.closest("[data-step]")) ev.stopPropagation();  // the button clicks itself
+  }, true);
+  let touch = null;
+  document.addEventListener("touchstart", ev => {
+    const el = ev.target.closest?.("[data-pics]");
+    touch = el && ev.touches.length === 1 ? {el, x: ev.touches[0].clientX, y: ev.touches[0].clientY} : null;
+  }, {passive: true});
+  document.addEventListener("touchend", ev => {
+    if (!touch) return;
+    const dx = ev.changedTouches[0].clientX - touch.x, dy = ev.changedTouches[0].clientY - touch.y;
+    if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.5) step(touch.el, dx < 0 ? 1 : -1);
+    touch = null;
+  }, {passive: true});
+  // The page's own onerror would empty the whole poster. Which picture failed is checked once more on its own:
+  // an error event that arrives after the picture was switched names the new src, not the broken one.
+  document.addEventListener("error", ev => {
+    const im = ev.target, el = im.closest?.("[data-pics]");
+    if (!el || !im.matches?.("img.bg, img.fg")) return;
+    ev.stopPropagation();
+    const src = im.getAttribute("src");
+    load(src, null, () => drop(el, src));
+  }, true);
+  return {controls, step};
 })();
 // LIGHTBOX-JS-END
 

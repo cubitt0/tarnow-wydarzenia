@@ -135,7 +135,7 @@ SHORT = {"koncerty": "Koncerty", "teatr": "Teatr i stand-up", "kino": "Kino", "s
          "uroczystosci": "Uroczystości", "inne": "Inne"}
 DAYS_SHORT = ["pon", "wt", "śr", "czw", "pt", "sob", "nd"]
 # Google Fonts wants the icon names sorted.
-_ICON_NAMES = ",".join(sorted({*ICONS.values(), "calendar_month", "confirmation_number", "chevron_right", "close", "content_copy", "event_available", "event_busy",
+_ICON_NAMES = ",".join(sorted({*ICONS.values(), "calendar_month", "confirmation_number", "chevron_left", "chevron_right", "close", "content_copy", "event_available", "event_busy",
                                "history", "local_activity", "location_on", "mail", "museum",
                                "zoom_in", "zoom_out", "open_in_new", "redeem", "schedule",
                                "share"}))
@@ -553,7 +553,7 @@ def event_page(base: str, e: Event, path: str, siblings: list[tuple[Event, str]]
     if e.description:
         ld["description"] = _desc(e.description, 500)
     if e.image:
-        ld["image"] = [e.image]
+        ld["image"] = [e.image, *e.images]
     if e.tickets and not status:
         ld["offers"] = {"@type": "Offer", "url": e.tickets, "availability": "https://schema.org/InStock"}
     crumbs = {"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [
@@ -644,6 +644,11 @@ def event_page(base: str, e: Event, path: str, siblings: list[tuple[Event, str]]
                f'<img class="fg" src="{escape(e.image)}" alt="{escape(e.title)}" referrerpolicy="no-referrer" {fail}>')
     zoom = (f' data-zoom="{escape(e.image)}" data-alt="{escape(e.title)}" role="button" tabindex="0" aria-label="Powiększ zdjęcie"'
             if e.image else "")
+    # The description's pictures (a programme, a price list) after the poster: arrows switch them (PICS in the calendar's script).
+    pics = [e.image, *e.images] if e.image else []
+    if len(pics) > 1:
+        zoom += f' data-pics="{escape(json.dumps(pics))}"'
+        img += pics_controls(len(pics))
     poster = (f'<div class="poster{"" if e.image else " noimg"}" style="{cat_vars(main_cat)}"{zoom}>{img}'
               f'<span class="ms glyph" aria-hidden="true">{ICONS.get(main_cat, "event")}</span>'
               f'<div class="pdate"><span>{DAYS[s.weekday()]}</span><b>{s.day}</b><span>{MONTHS[s.month - 1]} {s.year}</span></div></div>')
@@ -670,6 +675,14 @@ def event_page(base: str, e: Event, path: str, siblings: list[tuple[Event, str]]
     hide = screening or status == GONE or (status == PAST and e.cancelled)
     return _page(base, path, title, desc, body, image=e.image, og_type="article",
                  ld=[crumbs] if status == GONE else [ld, crumbs], noindex=hide)
+
+
+def pics_controls(n: int) -> str:
+    """The arrows and dots of a poster with n pictures: the same markup as PICS.controls() in kalendarz.html."""
+    dots = '<i class="on"></i>' + "<i></i>" * (n - 1)
+    return ('<button class="pv-btn l" type="button" data-step="-1" aria-label="Poprzednie zdjęcie"><span class="ms">chevron_left</span></button>'
+            '<button class="pv-btn r" type="button" data-step="1" aria-label="Następne zdjęcie"><span class="ms">chevron_right</span></button>'
+            f'<span class="pv-dots" aria-hidden="true">{dots}</span>')
 
 
 def related(e: Event, upcoming: list[Event], paths: dict[str, str], n: int = 6) -> list[tuple[Event, str]]:

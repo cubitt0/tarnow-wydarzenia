@@ -23,6 +23,7 @@ from unidecode import unidecode
 
 from .geo import KNOWN_TOWNS, haversine_km, norm_town
 from .models import TZ, Event, SourceRef
+from .pictures import same_picture
 
 log = logging.getLogger(__name__)
 
@@ -252,6 +253,9 @@ def merge(cluster: list[Event]) -> Event:
         for c in other.categories:
             if c not in primary.categories and c != "inne":
                 primary.categories.append(c)
+        for img in other.images:
+            if not any(same_picture(img, i) for i in primary.images):
+                primary.images.append(img)
     if len(primary.categories) > 1 and "inne" in primary.categories:
         primary.categories.remove("inne")
     refs: list[SourceRef] = []

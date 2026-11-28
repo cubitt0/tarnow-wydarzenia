@@ -11,6 +11,7 @@ from urllib.parse import urljoin, urlsplit
 from dateutil import parser as dtparser
 
 from ..config import Settings, SourceConfig
+from ..pictures import content_images
 from ..models import TZ, Event, SourceRef
 
 log = logging.getLogger(__name__)
@@ -71,10 +72,12 @@ class Source:
         lat: Any = None,
         lon: Any = None,
         image: str | None = None,
+        images: list[str] | None = None,
         price: str | None = None,
         categories: list[str] | None = None,
         cancelled: bool = False,
     ) -> Event | None:
+        """images: extra pictures; by default the ones inside an HTML description."""
         title = clean_text(title)
         start_dt, start_all_day = to_datetime(start)
         if not title or start_dt is None:
@@ -96,6 +99,8 @@ class Source:
             lat=to_float(lat) if lat is not None else loc.get("lat"),
             lon=to_float(lon) if lon is not None else loc.get("lon"),
             image=absolutize(image, self.cfg.url),
+            images=[u for u in (absolutize(i, self.cfg.url) for i in images) if u] if images is not None
+            else content_images(description, self.cfg.url),
             price=clean_text(price),
             categories=[c for c in (categories or []) if c] or [self.cfg.category],
             cancelled=cancelled,

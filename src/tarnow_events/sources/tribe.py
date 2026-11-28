@@ -7,6 +7,7 @@ from urllib.parse import urlsplit
 from .. import http
 from ..categorize import detect, normalize
 from ..models import SourceRef
+from ..pictures import content_images
 from .base import Source, is_machine_url
 
 # Short links in the "event website" field: followed once per run to the page they point at.
@@ -51,6 +52,8 @@ class TribeSource(Source):
                     lat=venue.get("geo_lat"),
                     lon=venue.get("geo_lng"),
                     image=(item.get("image") or {}).get("url") if isinstance(item.get("image"), dict) else None,
+                    # From the full description even when the excerpt is shown: a programme is often only a picture.
+                    images=content_images(item.get("description"), self.cfg.url),
                     price=item.get("cost") or None,
                     # Site category slugs ("wystawy_wernisaze", "koncert") → our calendars;
                     # generic ones ("kultura", "wydarzenia_specjalne") fall through to keywords.

@@ -27,6 +27,7 @@ from unidecode import unidecode
 
 from . import http
 from .models import Event
+from .pictures import logo_like, same_picture
 from .sources.base import is_machine_url
 from .sources.jsonld import extract_jsonld_events
 from .tickets import STOP, choose_ticket, free_ticket, is_ticket_url, page_ticket_candidates, says_free
@@ -51,11 +52,12 @@ ARTICLE_TYPES = {"Article", "BlogPosting", "NewsArticle", "WebPage", "ImageObjec
 PAGE_VERSION = 2  # bump when page_image() learns something: pages read before are read again for a picture
 
 
-def logo_like(img: str) -> bool:
-    """A site's mark, not an event's picture: SVG (posters are photos; og:image cannot even be SVG) or "logo"
-    in the file name. Sites that put their logo in og:image (Gemini Park) still have the post's picture."""
-    name = urlparse(img).path.lower().rsplit("/", 1)[-1]
-    return name.endswith(".svg") or "logo" in name
+def tidy_gallery(ev: Event) -> None:
+    """After the poster is settled: it is not repeated among the extra pictures, and an event with no
+    poster of its own gets the first of them."""
+    ev.images = [i for i in ev.images if not same_picture(i, ev.image, loose=True) and not logo_like(i)]
+    if not ev.image and ev.images:
+        ev.image = ev.images.pop(0)
 
 
 def _jsonld_images(html: str) -> list[str]:
